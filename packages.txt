@@ -1,0 +1,63 @@
+# Ace 6 Debloat Package List
+# 格式: 每行一个包名,支持 # 开头的注释行和空行
+
+# === 1. 广告与推荐核心 ===
+com.opos.ads  # OPPO 系统广告核心服务, 禁用后绝大多数系统广告位不再加载
+com.heytap.browser  # OPPO 浏览器, 禁用后桌面搜索卡片与浏览器入口消失
+com.heytap.market  # 应用商店/软件商店, 禁用会影响官方渠道更新与礼包领取
+com.heytap.pictorial  # 锁屏画报/资讯流, 禁用后锁屏不再轮播推荐内容
+com.coloros.colordirectservice  # 全局广告投放/直推触点, 禁用减少“为你推荐”弹窗
+com.coloros.activation  # 首次激活与推荐引导, 禁用降低激活联动广告
+
+# === 2. Heytap / 云控 / 推送管线 ===
+com.heytap.mcs  # HeyTap 消息推送通道, 禁用后官方推送/游戏消息可能收不到
+com.heytap.cloud  # HeyTap 云服务主进程, 禁用后云备份/云短信不可用
+com.heytap.vip  # HeyTap 会员福利中心, 禁用仅影响会员卡券
+com.heytap.quicksearchbox  # 系统全局搜索/负一屏搜索框, 禁用后桌面搜索失效
+com.heytap.mydevices  # HeyTap 设备互通, 禁用后与耳机/手表的云服务关联会受限
+com.heytap.opluscarlink  # 车联服务, 禁用后 ColorOS 车载互联功能不可用
+com.heytap.usercenter  # 会员中心壳体, 禁用后会员入口与成长值显示隐藏
+com.heytap.openid  # HeyTap 快速登录授权, 禁用后第三方使用 HeyTap 登录会失败
+com.coloros.ocs.opencard  # HeyTap 开卡/荐卡弹窗, 禁用后荐卡与支付优惠提示消失
+com.coloros.phoenix  # Phoenix Watchdog 拉活/性能调度, 禁用可减少自启, 但可能影响性能调优
+# com.heytap.speechassist  # HeyTap 语音助手, 如需语音唤醒保持注释
+
+# === 3. 行为分析 / 统计 / AI 监控 ===
+com.oplus.statistics.rom  # ColorOS 统计与埋点, 禁用阻断大部分系统数据上报
+com.oplus.appsense  # AppSense 行为分析, 禁用减少个性化推荐
+com.oplus.deepthinker  # DeepThinker AI 引擎, 禁用影响一些 AI 场景加速
+com.oplus.smartengine  # Smart Engine 智能调度, 禁用可降低后台干预但略损性能
+com.oplus.athena  # Athena 行为洞察, 进一步阻断行为画像
+com.oplus.aimemory  # AI Memory 内存预加载, 禁用后应用冷启动或变慢
+com.oplus.obrain  # OBrain 云控策略中心, 禁用可杜绝云控推送
+com.oplus.aiunit  # AI 单元调度服务, 禁用与 smart engine 类似
+com.oplus.aiwidgets  # AI 小组件内容推送, 禁用后负一屏/桌面不再推 AI 推荐
+com.oplus.aiwriter  # AI 写作/生成组件, 禁用关闭相关实验功能
+com.oplus.sense.netscore  # Sense 网络体验评分, 禁用避免上传网络质量
+com.oplus.sense.netprediction  # Sense 网络预测模块, 禁用后智能网络切换可能减弱
+com.oplus.atlas  # Atlas 行为预测, 禁用可减少隐私采集
+com.oplus.notificationmanager  # 全局通知策略服务, 禁用可能影响通知排序/分类
+com.oplus.securitynotification  # 安全通知/风险弹窗, 禁用后安全提醒不再弹出
+
+# === 4. 远程运维 / SAU / OTA 推送 ===
+# 注意: 这组会影响 ColorOS OTA 更新
+# 如需接收系统更新,请在升级前临时禁用本模块
+com.oplus.postmanservice  # Postman 远程调试/云控下发, 禁用后厂商远程配置无法下发
+com.oppo.ctautoregist  # 运营商自动注册, 禁用阻断合作方自动激活
+com.oplus.sau  # SAU 系统更新监控, 禁用会导致 OTA 不可用
+com.oplus.sauhelper  # SAU 辅助进程, 与 OTA 更新绑定
+com.oplus.romupdate  # ROM 在线升级核心, 禁用后系统不会检查新版本
+com.oplus.upgradeguide  # 升级助手/升级提示卡, 禁用则不再收到升级通知
+
+# === 5. 安全管控 / 安装拦截 (默认保留) ===
+# 注意: 以下包涉及 ColorOS 安全中心与支付校验, 禁用可能绕过"高风险应用"提示, 但也会失去权限/支付防护
+com.coloros.phonemanager  # 手机管家,安装包扫描检查
+com.coloros.safecenter  # 安全中心主界面与风险扫描, 禁用后无法打开安全中心
+# com.coloros.securitypermission  # 应用权限管理
+com.oplus.guard  # 系统守护/恶意软件扫描, 可能参与安装拦截
+com.coloros.securityguard        # Guard 主进程，负责拦截并上报
+com.coloros.remoteguardservice   # Guard 的远程策略/家长接口
+com.coloros.familyguard          # 家庭守护/家长控制
+com.heytap.htms  # htms
+# com.coloros.securepay  # 安全支付/签名验证, 禁用后部分银行/支付 App 可能异常
+# com.coloros.securitykeyboard  # 安全键盘, 禁用后支付页面回退为系统键盘
