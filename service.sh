@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Ace 6 Debloat - Service Script
+# ColorOS 16 Debloat - Service Script
 # 在系统启动时禁用指定的应用包
 
 MODDIR="${0%/*}"
