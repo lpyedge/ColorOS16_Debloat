@@ -1,5 +1,5 @@
 ui_print "=========================================="
-ui_print " Ace 6 Debloat - ColorOS 16"
+ui_print " ColorOS 16 Debloat - Ace 6"
 ui_print " 版本: 1.1"
 ui_print "=========================================="
 ui_print ""
@@ -34,7 +34,6 @@ set_perm "$MODDIR/webroot/cgi-bin/packages.sh" 0 0 0755
 
 # 修复 Windows 换行符 (CRLF -> LF)
 # 使用 tr 命令，兼容性优于 sed
-ui_print "- 正在修复文件格式 (CRLF -> LF)..."
 for file in "$MODDIR"/*.sh "$MODDIR"/*.prop "$MODDIR"/*.txt "$MODDIR"/webroot/cgi-bin/*.sh; do
   if [ -f "$file" ]; then
     cat "$file" | tr -d '\r' > "${file}.tmp" && mv "${file}.tmp" "$file"
