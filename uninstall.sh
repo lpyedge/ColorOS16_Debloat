@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Ace 6 Debloat - Uninstall Script
+# ColorOS 16 Debloat - Uninstall Script
 # 卸载模块时重新启用之前禁用的应用包
 
 MODDIR="${0%/*}"
