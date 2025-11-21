@@ -1,0 +1,103 @@
+name: Package and Publish Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.2.3)'
+        required: true
+      release_name:
+        description: 'Release title (optional)'
+        required: false
+      body:
+        description: 'Release notes (optional)'
+        required: false
+      prerelease:
+        description: 'Mark as prerelease (true/false)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+
+jobs:
+  package-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare version and update module.prop
+        env:
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -e
+          version=${TAG#v}
+          # extract numeric parts, default to 0 when missing
+          major=$(echo "${version}" | cut -d. -f1)
+          minor=$(echo "${version}" | cut -d. -f2)
+          patch=$(echo "${version}" | cut -d. -f3)
+          minor=${minor:-0}
+          patch=${patch:-0}
+          # compute a versionCode (major*10000 + minor*100 + patch)
+          versionCode=$((10#${major}*10000 + 10#${minor}*100 + 10#${patch}))
+          echo "Setting module.prop version=${version} and versionCode=${versionCode}"
+          if [ -f module.prop ]; then
+            # replace or add version and versionCode lines
+            if grep -q "^version=" module.prop; then
+              sed -i -E "s/^version=.*/version=${version}/" module.prop
+            else
+              echo "version=${version}" >> module.prop
+            fi
+            if grep -q "^versionCode=" module.prop; then
+              sed -i -E "s/^versionCode=.*/versionCode=${versionCode}/" module.prop
+            else
+              echo "versionCode=${versionCode}" >> module.prop
+            fi
+            echo "--- module.prop after update ---"
+            cat module.prop
+          else
+            echo "module.prop not found!" >&2
+            exit 1
+          fi
+
+      - name: Create ZIP package
+        run: |
+          # Remove any existing artifact
+          rm -f ColorOS16_Debloat.zip
+          # Create zip of repo root but exclude git and workflow files
+          zip -r ColorOS16_Debloat.zip . -x "./.git/*" "./.github/*"
+          # create a versioned copy for convenience
+          version=${{ github.event.inputs.tag }}
+          version=${version#v}
+          cp ColorOS16_Debloat.zip ColorOS16_Debloat-${version}.zip || true
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          release_name: ${{ github.event.inputs.release_name || github.event.inputs.tag }}
+          body: ${{ github.event.inputs.body }}
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ColorOS16_Debloat.zip
+          asset_name: ColorOS16_Debloat.zip
+          asset_content_type: application/zip
+
+      - name: Upload versioned release asset
+        if: always()
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ColorOS16_Debloat-${{ github.event.inputs.tag && github.event.inputs.tag != '' && github.event.inputs.tag || github.ref_name }}.zip
+          # normalize tag name (remove leading v) for asset display name
+          asset_name: ColorOS16_Debloat-${{ github.event.inputs.tag && github.event.inputs.tag != '' && github.event.inputs.tag || github.ref_name }}.zip
+          asset_content_type: application/zip
