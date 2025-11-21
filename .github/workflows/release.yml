@@ -74,9 +74,9 @@ jobs:
   "name": "ColorOS 16 Debloat (Ads / Cloud / Stats)",
   "version": "${version}",
   "versionCode": ${new_vc},
-  "zip_url": "${zip_url}"
+          "zip_url": "${zip_url}"
 }
-EOF
+          EOF
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
