@@ -28,40 +28,61 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
-      - name: Prepare version and update module.prop
+      - name: Bump versionCode, update module.prop and latest.json, and push
         env:
           TAG: ${{ github.event.inputs.tag }}
+          REPO: ${{ github.repository }}
         run: |
           set -e
           version=${TAG#v}
-          # extract numeric parts, default to 0 when missing
-          major=$(echo "${version}" | cut -d. -f1)
-          minor=$(echo "${version}" | cut -d. -f2)
-          patch=$(echo "${version}" | cut -d. -f3)
-          minor=${minor:-0}
-          patch=${patch:-0}
-          # compute a versionCode (major*10000 + minor*100 + patch)
-          versionCode=$((10#${major}*10000 + 10#${minor}*100 + 10#${patch}))
-          echo "Setting module.prop version=${version} and versionCode=${versionCode}"
+
+          # read existing versionCode from module.prop (default 0)
           if [ -f module.prop ]; then
-            # replace or add version and versionCode lines
-            if grep -q "^version=" module.prop; then
-              sed -i -E "s/^version=.*/version=${version}/" module.prop
-            else
-              echo "version=${version}" >> module.prop
-            fi
-            if grep -q "^versionCode=" module.prop; then
-              sed -i -E "s/^versionCode=.*/versionCode=${versionCode}/" module.prop
-            else
-              echo "versionCode=${versionCode}" >> module.prop
-            fi
-            echo "--- module.prop after update ---"
-            cat module.prop
+            existing_vc=$(grep -E '^versionCode=' module.prop | cut -d= -f2 || true)
+            existing_vc=${existing_vc:-0}
           else
             echo "module.prop not found!" >&2
             exit 1
           fi
+
+          # increment versionCode
+          new_vc=$((existing_vc + 1))
+
+          echo "Bumping versionCode: ${existing_vc} -> ${new_vc}, setting version=${version}"
+
+          # update or add version and versionCode in module.prop
+          if grep -q "^version=" module.prop; then
+            sed -i -E "s/^version=.*/version=${version}/" module.prop
+          else
+            echo "version=${version}" >> module.prop
+          fi
+          if grep -q "^versionCode=" module.prop; then
+            sed -i -E "s/^versionCode=.*/versionCode=${new_vc}/" module.prop
+          else
+            echo "versionCode=${new_vc}" >> module.prop
+          fi
+
+          # prepare latest.json
+          zip_name="ColorOS16_Debloat-${version}.zip"
+          zip_url="https://github.com/${REPO}/releases/latest/download/${zip_name}"
+          cat > webroot/latest.json <<EOF
+{
+  "id": "coloros16_debloat",
+  "name": "ColorOS 16 Debloat (Ads / Cloud / Stats)",
+  "version": "${version}",
+  "versionCode": ${new_vc},
+  "zip_url": "${zip_url}"
+}
+EOF
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add module.prop webroot/latest.json
+          git commit -m "chore(release): bump versionCode to ${new_vc} for ${version}" || echo "no changes to commit"
+          git push origin HEAD:main || echo "push failed"
 
       - name: Create ZIP package
         run: |
@@ -103,3 +124,5 @@ jobs:
           # normalize tag name (remove leading v) for asset display name
           asset_name: ColorOS16_Debloat-${{ github.event.inputs.tag && github.event.inputs.tag != '' && github.event.inputs.tag || github.ref_name }}.zip
           asset_content_type: application/zip
+
+      # latest.json already updated and pushed before packaging
