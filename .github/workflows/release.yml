@@ -32,17 +32,30 @@ jobs:
           persist-credentials: true
 
       - name: Bump versionCode, update module.prop and latest.json, and push
+        id: prepare
         env:
           TAG: ${{ github.event.inputs.tag }}
           REPO: ${{ github.repository }}
           BODY: ${{ github.event.inputs.body }}
         run: |
-          set -e
+          set -euo pipefail
+
+          if [ -z "${TAG}" ]; then
+            echo "Release tag input (e.g. v0.0.4) is required" >&2
+            exit 1
+          fi
+
           version=${TAG#v}
+          if [ -z "$version" ]; then
+            echo "Unable to derive version from tag ${TAG}" >&2
+            exit 1
+          fi
+          zip_name="ColorOS16_Debloat-${version}.zip"
 
           # read existing versionCode from module.prop (default 0)
           if [ -f module.prop ]; then
-            existing_vc=$(grep -E '^versionCode=' module.prop | cut -d= -f2 || true)
+            existing_vc_line=$(grep -E '^versionCode=' module.prop || true)
+            existing_vc=${existing_vc_line#*=}
             existing_vc=${existing_vc:-0}
           else
             echo "module.prop not found!" >&2
@@ -66,14 +79,16 @@ jobs:
             echo "versionCode=${new_vc}" >> module.prop
           fi
           # update download_name and update_url to the versioned zip / latest zip for Magisk Manager
-          new_download_name="ColorOS16_Debloat-${version}.zip"
+          new_download_name="${zip_name}"
           if grep -q "^download_name=" module.prop; then
             sed -i -E "s/^download_name=.*/download_name=${new_download_name}/" module.prop
           else
             echo "download_name=${new_download_name}" >> module.prop
           fi
-          # set update_url to the *latest download* unversioned zip (for older Magisk Manager compatibility)
-          new_update_url="https://github.com/${REPO}/releases/latest/download/ColorOS16_Debloat.zip"
+          # set update_url to raw latest.json (JSON format) for Magisk Manager compatibility
+          owner=$(echo "${REPO}" | cut -d/ -f1)
+          repo_name=$(echo "${REPO}" | cut -d/ -f2)
+          new_update_url="https://raw.githubusercontent.com/${owner}/${repo_name}/main/webroot/latest.json"
           if grep -q "^update_url=" module.prop; then
             sed -i -E "s|^update_url=.*|update_url=${new_update_url}|" module.prop
           else
@@ -81,8 +96,7 @@ jobs:
           fi
 
           # prepare latest.json
-          zip_name="ColorOS16_Debloat-${version}.zip"
-          zip_url="https://github.com/${REPO}/releases/latest/download/${zip_name}"
+          zip_url="https://github.com/${REPO}/releases/download/${TAG}/${zip_name}"
           # create JSON via Python to safely handle escaping and changelog
           export version=${version}
           export versionCode=${new_vc}
@@ -96,7 +110,9 @@ data = {
   "version": os.environ.get('version',''),
   "versionCode": int(os.environ.get('versionCode','0')),
   "download_name": os.environ.get('download_name',''),
+  "zipUrl": os.environ.get('zip_url',''),
   "zip_url": os.environ.get('zip_url',''),
+  "downloadUrl": os.environ.get('zip_url',''),
   "download_url": os.environ.get('zip_url',''),
   "changelog": os.environ.get('BODY','').strip()
 }
@@ -109,15 +125,29 @@ PY
           git commit -m "chore(release): bump versionCode to ${new_vc} for ${version}" || echo "no changes to commit"
           git push origin HEAD:main || echo "push failed"
 
+          {
+            echo "version=${version}"
+            echo "zip_name=${zip_name}"
+            echo "version_code=${new_vc}"
+            echo "tag=${TAG}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create versioned + latest ZIP packages
+        env:
+          VERSION: ${{ steps.prepare.outputs.version }}
+          ZIP_NAME: ${{ steps.prepare.outputs.zip_name }}
         run: |
           # Create a versioned zip of repo root (exclude git & workflows)
           rm -f ColorOS16_Debloat-*.zip
-          version=${{ github.event.inputs.tag }}
-          version=${version#v}
-          zip -r ColorOS16_Debloat-${version}.zip . -x "./.git/*" "./.github/*"
+          version=${VERSION:-}
+          if [ -z "$version" ]; then
+            echo "Missing VERSION metadata from prepare step" >&2
+            exit 1
+          fi
+          zip_name=${ZIP_NAME:-ColorOS16_Debloat-${version}.zip}
+          zip -r "$zip_name" . -x "./.git/*" "./.github/*"
           # create an unversioned 'latest' zip so update_url can point to a stable filename
-          cp ColorOS16_Debloat-${version}.zip ColorOS16_Debloat.zip
+          cp "$zip_name" ColorOS16_Debloat.zip
 
       - name: Create GitHub Release
         id: create_release
@@ -145,9 +175,8 @@ PY
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ColorOS16_Debloat-${{ github.event.inputs.tag && github.event.inputs.tag != '' && github.event.inputs.tag || github.ref_name }}.zip
-          # normalize tag name (remove leading v) for asset display name
-          asset_name: ColorOS16_Debloat-${{ github.event.inputs.tag && github.event.inputs.tag != '' && github.event.inputs.tag || github.ref_name }}.zip
+          asset_path: ${{ steps.prepare.outputs.zip_name }}
+          asset_name: ${{ steps.prepare.outputs.zip_name }}
           asset_content_type: application/zip
 
       # latest.json already updated and pushed before packaging
