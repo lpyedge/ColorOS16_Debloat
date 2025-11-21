@@ -1,4 +1,4 @@
-# Ace 6 Debloat Package List
+# ColorOS 16 Debloat Package List
 # 格式: 每行一个包名,支持 # 开头的注释行和空行
 
 # === 1. 广告与推荐核心 ===
