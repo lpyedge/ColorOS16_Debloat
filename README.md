@@ -1,4 +1,4 @@
-# Ace 6 Debloat (ColorOS 16)
+# ColorOS 16 Debloat (Ace 6)
 
 Magisk 模块用于禁用 OnePlus Ace 6 / ColorOS 16 上的广告、云控与运维组件。通过 `pm disable-*-user 0` 的方式实现，可随时卸载恢复。
 
