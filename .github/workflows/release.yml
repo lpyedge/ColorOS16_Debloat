@@ -94,6 +94,11 @@ jobs:
           else
             echo "update_url=${new_update_url}" >> module.prop
           fi
+          if grep -q "^updateJson=" module.prop; then
+            sed -i -E "s|^updateJson=.*|updateJson=${new_update_url}|" module.prop
+          else
+            echo "updateJson=${new_update_url}" >> module.prop
+          fi
 
           # prepare latest.json
           zip_url="https://github.com/${REPO}/releases/download/${TAG}/${zip_name}"
