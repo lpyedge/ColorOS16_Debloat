@@ -68,15 +68,9 @@ jobs:
           # prepare latest.json
           zip_name="ColorOS16_Debloat-${version}.zip"
           zip_url="https://github.com/${REPO}/releases/latest/download/${zip_name}"
-          cat > webroot/latest.json <<EOF
-{
-  "id": "coloros16_debloat",
-  "name": "ColorOS 16 Debloat (Ads / Cloud / Stats)",
-  "version": "${version}",
-  "versionCode": ${new_vc},
-          "zip_url": "${zip_url}"
-}
-          EOF
+          # create JSON via printf to avoid heredoc/YAML indentation issues
+          printf '{"id":"%s","name":"%s","version":"%s","versionCode":%s,"zip_url":"%s"}\n' \
+            "coloros16_debloat" "ColorOS 16 Debloat (Ads / Cloud / Stats)" "${version}" ${new_vc} "${zip_url}" > webroot/latest.json
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -84,16 +78,13 @@ jobs:
           git commit -m "chore(release): bump versionCode to ${new_vc} for ${version}" || echo "no changes to commit"
           git push origin HEAD:main || echo "push failed"
 
-      - name: Create ZIP package
+      - name: Create versioned ZIP package
         run: |
-          # Remove any existing artifact
-          rm -f ColorOS16_Debloat.zip
-          # Create zip of repo root but exclude git and workflow files
-          zip -r ColorOS16_Debloat.zip . -x "./.git/*" "./.github/*"
-          # create a versioned copy for convenience
+          # Create a versioned zip of repo root (exclude git & workflows)
+          rm -f ColorOS16_Debloat-*.zip
           version=${{ github.event.inputs.tag }}
           version=${version#v}
-          cp ColorOS16_Debloat.zip ColorOS16_Debloat-${version}.zip || true
+          zip -r ColorOS16_Debloat-${version}.zip . -x "./.git/*" "./.github/*"
 
       - name: Create GitHub Release
         id: create_release
@@ -106,14 +97,6 @@ jobs:
           prerelease: ${{ github.event.inputs.prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload release asset
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ColorOS16_Debloat.zip
-          asset_name: ColorOS16_Debloat.zip
-          asset_content_type: application/zip
 
       - name: Upload versioned release asset
         if: always()
