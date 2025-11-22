@@ -150,16 +150,17 @@ input[type="checkbox"] {
 
 .package-name {
     font-family: monospace;
-    font-size: 0.95rem;
-    color: #050505;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a1a1a;
     margin-bottom: 0.25rem;
     word-break: break-all;
 }
 
 .package-desc {
-    font-size: 0.85rem;
-    color: #65676b;
-    line-height: 1.3;
+    font-size: 0.8rem;
+    color: #808080;
+    line-height: 1.4;
 }
 
 pre {

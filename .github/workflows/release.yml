@@ -78,6 +78,12 @@ jobs:
           else
             echo "versionCode=${new_vc}" >> module.prop
           fi
+          
+          # Update version in customize.sh
+          if [ -f customize.sh ]; then
+             sed -i -E "s/ui_print \" 版本: .*\"/ui_print \" 版本: ${version}\"/" customize.sh
+          fi
+
           # update download_name and update_url to the versioned zip / latest zip for Magisk Manager
           new_download_name="${zip_name}"
           if grep -q "^download_name=" module.prop; then
@@ -89,6 +95,8 @@ jobs:
           owner=$(echo "${REPO}" | cut -d/ -f1)
           repo_name=$(echo "${REPO}" | cut -d/ -f2)
           new_update_url="https://raw.githubusercontent.com/${owner}/${repo_name}/main/webroot/latest.json"
+          changelog_url="https://raw.githubusercontent.com/${owner}/${repo_name}/main/webroot/changelog.md"
+          
           if grep -q "^update_url=" module.prop; then
             sed -i -E "s|^update_url=.*|update_url=${new_update_url}|" module.prop
           else
@@ -100,6 +108,9 @@ jobs:
             echo "updateJson=${new_update_url}" >> module.prop
           fi
 
+          # Write changelog to webroot/changelog.md
+          echo "${BODY}" > webroot/changelog.md
+
           # prepare latest.json
           zip_url="https://github.com/${REPO}/releases/download/${TAG}/${zip_name}"
           # create JSON via Python to safely handle escaping and changelog
@@ -107,6 +118,7 @@ jobs:
           export versionCode=${new_vc}
           export download_name=${new_download_name}
           export zip_url=${zip_url}
+          export changelog_url=${changelog_url}
           python - <<'PY' > webroot/latest.json
           import os, json
           data = {
@@ -119,14 +131,14 @@ jobs:
             "zip_url": os.environ.get('zip_url',''),
             "downloadUrl": os.environ.get('zip_url',''),
             "download_url": os.environ.get('zip_url',''),
-            "changelog": os.environ.get('BODY','').strip()
+            "changelog": os.environ.get('changelog_url','')
           }
           print(json.dumps(data, ensure_ascii=False))
           PY
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add module.prop webroot/latest.json
+          git add module.prop webroot/latest.json webroot/changelog.md customize.sh
           git commit -m "chore(release): bump versionCode to ${new_vc} for ${version}" || echo "no changes to commit"
           git push origin HEAD:main || echo "push failed"
 

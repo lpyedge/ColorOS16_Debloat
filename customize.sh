@@ -9,15 +9,6 @@ ui_print "- 支持 WebUI 可视化管理包列表"
 ui_print "- 自动应用 packages.txt 配置"
 ui_print ""
 
-if [ "$KSU" = "true" ]; then
-  ui_print "检测到 KernelSU 环境："
-  ui_print "- 支持原生 WebUI (模块列表显示打开按钮)"
-  ui_print "- 备用访问地址: http://127.0.0.1:9898"
-else
-  ui_print "检测到 Magisk 环境："
-  ui_print "- WebUI 访问地址: http://127.0.0.1:9898"
-  ui_print "- 请使用浏览器访问上述地址进行管理"
-fi
 
 ui_print ""
 ui_print "=========================================="

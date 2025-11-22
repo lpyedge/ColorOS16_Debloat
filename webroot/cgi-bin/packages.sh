@@ -13,7 +13,8 @@ APPLY_SCRIPT="$MODDIR/apply_now.sh"
 
 # === 关键修改：先输出响应头 ===
 # 这能确保浏览器先建立连接，避免因脚本处理耗时或错误导致的 "Failed to fetch"
-echo "Content-Type: text/plain"
+echo "Content-Type: application/json"
+echo "Cache-Control: no-cache"
 echo "Connection: close"
 echo ""
 
@@ -50,7 +51,8 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     fi
     
     # 返回 JSON 响应
-    echo "{\"success\": $SAVE_STATUS, \"apply\": \"$APPLY_STATUS\"}"
+    # 使用 printf 确保格式正确
+    printf '{"success": %s, "apply": "%s"}' "$SAVE_STATUS" "$APPLY_STATUS"
 else
     # GET 请求 (备用，主要由静态文件处理)
     if [ -f "$PKG_FILE" ]; then
