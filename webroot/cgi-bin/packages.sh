@@ -24,14 +24,16 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # 相比 dd，cat 不会因为字节数计算错误而挂起
     cat > "$PKG_FILE.tmp"
     
+    SAVE_STATUS="false"
+    APPLY_STATUS="skipped"
+    
     # 检查是否成功写入
     if [ -s "$PKG_FILE.tmp" ]; then
         mv -f "$PKG_FILE.tmp" "$PKG_FILE"
         # 同步到 Web 目录
         cp -f "$PKG_FILE" "$MODDIR/webroot/packages.txt"
-        echo "Save OK"
+        SAVE_STATUS="true"
     else
-        echo "Save Failed: Empty body"
         rm -f "$PKG_FILE.tmp"
     fi
 
@@ -41,9 +43,14 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         if [ -x "$APPLY_SCRIPT" ]; then
             # 后台执行
             nohup sh "$APPLY_SCRIPT" >/dev/null 2>&1 &
-            echo "Apply Triggered"
+            APPLY_STATUS="triggered"
+        else
+            APPLY_STATUS="script_not_found"
         fi
     fi
+    
+    # 返回 JSON 响应
+    echo "{\"success\": $SAVE_STATUS, \"apply\": \"$APPLY_STATUS\"}"
 else
     # GET 请求 (备用，主要由静态文件处理)
     if [ -f "$PKG_FILE" ]; then

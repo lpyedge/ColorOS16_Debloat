@@ -108,10 +108,35 @@ async function savePackages(applyImmediately) {
             const text = await res.text();
             throw new Error(text || "保存失败");
         }
-        const result = await res.json();
-        const msg = applyImmediately && result.apply_exit_code !== undefined
-            ? `保存成功（apply exit=${result.apply_exit_code ?? "n/a"}）`
-            : "保存成功";
+        
+        // 尝试解析 JSON 响应
+        let result;
+        try {
+            result = await res.json();
+        } catch (e) {
+            // 如果解析失败，可能是旧版脚本返回了纯文本，或者发生了其他错误
+            console.warn("JSON parse failed, falling back to text check", e);
+            // 重新读取流是不可能的，但如果 res.json() 失败，通常意味着响应不是 JSON
+            // 这里我们假设如果状态码是 200 且解析失败，可能是旧版逻辑返回了 "Save OK"
+            // 但由于我们已经修改了 packages.sh，这里应该能正常解析
+            throw new Error("服务器返回了无效的格式");
+        }
+
+        if (result.success === false) {
+            throw new Error("保存失败 (Server returned success: false)");
+        }
+
+        let msg = "保存成功";
+        if (applyImmediately) {
+            if (result.apply === "triggered") {
+                msg += " (已触发应用)";
+            } else if (result.apply === "script_not_found") {
+                msg += " (应用脚本未找到)";
+            } else {
+                msg += ` (状态: ${result.apply})`;
+            }
+        }
+        
         setStatus(msg);
         await loadPackages();
     } catch (err) {
@@ -169,16 +194,25 @@ function parsePackagesText(text) {
         let enabled = true;
         if (working.startsWith("#")) {
             working = working.slice(1).trim();
-            if (!working.startsWith("com.")) {
-                currentGroup.preamble.push(line);
-                return;
-            }
+            // 移除 com. 前缀检查，允许 android. 或其他包名
+            // if (!working.startsWith("com.")) {
+            //     currentGroup.preamble.push(line);
+            //     return;
+            // }
             enabled = false;
         }
 
-        if (!working.startsWith("com.")) {
-            currentGroup.preamble.push(line);
-            return;
+        // 移除 com. 前缀检查
+        // if (!working.startsWith("com.")) {
+        //     currentGroup.preamble.push(line);
+        //     return;
+        // }
+
+        // 简单的包名格式检查：必须包含至少一个点，且不包含空格
+        // 这可以避免将纯注释行误认为包
+        if (working.indexOf('.') === -1 || working.startsWith("=")) {
+             currentGroup.preamble.push(line);
+             return;
         }
 
         let comment = "";

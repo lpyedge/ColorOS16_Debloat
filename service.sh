@@ -241,7 +241,8 @@ while IFS= read -r line || [ -n "$line" ]; do
     fi
     
     # 提取包名（去掉注释部分）
-    pkg=$(printf '%s\n' "$line" | awk '{print $1}')
+    # 使用 cut -d'#' -f1 去掉行内注释，再用 awk 提取第一个字段(包名)
+    pkg=$(printf '%s\n' "$line" | cut -d'#' -f1 | awk '{print $1}')
     if [ -z "$pkg" ]; then
         continue
     fi

@@ -31,9 +31,12 @@ extract_pkg_from_line() {
         trimmed=$(printf '%s\n' "${trimmed#\#}" | sed 's/^[[:space:]]*//')
     fi
 
+    # 移除 com. 前缀限制，并正确处理行内注释
+    # 检查是否包含点号，作为包名的基本特徵
     case $trimmed in
-        com.*)
-            printf '%s\n' "$trimmed" | awk '{print $1}'
+        *.*)
+            # 先去掉 # 及其后面的内容，再取第一列
+            printf '%s\n' "$trimmed" | cut -d'#' -f1 | awk '{print $1}'
             return
             ;;
         *)
