@@ -99,7 +99,7 @@ async function savePackages(applyImmediately) {
     setStatus("保存中...");
     try {
         const payload = buildPackagesText(state);
-        const res = await fetch(`/cgi-bin/packages.sh?apply=${applyImmediately ? 1 : 0}`, {
+        const res = await fetch(`/cgi-bin/packages.cgi?apply=${applyImmediately ? 1 : 0}`, {
             method: "POST",
             headers: { "Content-Type": "text/plain" },
             body: payload,
