@@ -1,2 +1,2 @@
-feat: 增加 WebUI 调试信息，检查 CGI 脚本执行状态并更新 httpd.conf
+feat: 移除 httpd.conf 文件，简化 WebUI 启动脚本并增强调试信息
 
