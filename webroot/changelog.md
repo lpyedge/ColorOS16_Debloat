@@ -1,2 +1,2 @@
-feat: 移除 httpd.conf 文件，简化 WebUI 启动脚本并增强调试信息
+feat: 重构 CGI 脚本，移除旧的 packages.cgi，新增 packages 脚本以支持读取和更新 packages.txt
 
