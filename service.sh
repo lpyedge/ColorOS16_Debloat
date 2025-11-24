@@ -87,9 +87,9 @@ start_webui() {
     log "--- WebUI Debug Info ---"
     log "Busybox version: $($bb --help | head -n 1)"
     log "CGI script permissions:"
-    ls -l "$MODDIR/webroot/cgi-bin/packages.cgi" | while read l; do log "  $l"; done
+    ls -l "$MODDIR/webroot/cgi-bin/packages" | while read l; do log "  $l"; done
     log "Testing CGI script execution (dry run):"
-    sh "$MODDIR/webroot/cgi-bin/packages.cgi" >/dev/null 2>&1
+    sh "$MODDIR/webroot/cgi-bin/packages" >/dev/null 2>&1
     if [ $? -eq 0 ]; then log "  Execution test passed"; else log "  Execution test FAILED"; fi
     log "------------------------"
     # ==================
@@ -123,7 +123,7 @@ start_webui() {
 # === 关键修复：确保 CGI 脚本可执行且无 Windows 换行符 ===
 # 这步操作在每次开机时执行，防止 customize.sh 修复失败
 CGI_DIR="$MODDIR/webroot/cgi-bin"
-CGI_SCRIPT="$CGI_DIR/packages.cgi"
+CGI_SCRIPT="$CGI_DIR/packages"
 
 if [ -d "$CGI_DIR" ]; then
     chmod 0755 "$CGI_DIR"
