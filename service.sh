@@ -81,13 +81,11 @@ start_webui() {
     $bb pkill -f "httpd -p $port" 2>/dev/null
 
     # 启动 httpd
-    log "Starting WebUI with: $bb httpd -p $port -h $MODDIR/webroot -c $MODDIR/webroot/httpd.conf"
+    log "Starting WebUI with: $bb httpd -p $port -h $MODDIR/webroot"
     
     # === DEBUG INFO ===
     log "--- WebUI Debug Info ---"
     log "Busybox version: $($bb --help | head -n 1)"
-    log "httpd.conf content:"
-    cat "$MODDIR/webroot/httpd.conf" | while read l; do log "  $l"; done
     log "CGI script permissions:"
     ls -l "$MODDIR/webroot/cgi-bin/packages.cgi" | while read l; do log "  $l"; done
     log "Testing CGI script execution (dry run):"
@@ -96,7 +94,7 @@ start_webui() {
     log "------------------------"
     # ==================
 
-    $bb httpd -p $port -h "$MODDIR/webroot" -c "$MODDIR/webroot/httpd.conf"
+    $bb httpd -p $port -h "$MODDIR/webroot"
     
     # === 混合架构核心：同步配置文件到 Web 目录 ===
     # 解决 CGI 读取失败的问题，改用静态文件读取
@@ -113,7 +111,7 @@ start_webui() {
         # 尝试使用备用端口 9899
         port=9899
         log "Retrying on port $port..."
-        $bb httpd -p $port -h "$MODDIR/webroot" -c "$MODDIR/webroot/httpd.conf"
+        $bb httpd -p $port -h "$MODDIR/webroot"
         if netstat -an | grep -q ":$port "; then
              log "WebUI started successfully at http://127.0.0.1:$port"
         else
