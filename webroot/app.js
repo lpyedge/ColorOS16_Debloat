@@ -116,6 +116,11 @@ async function savePackages(applyImmediately) {
             throw new Error(`请求失败 (${debugSummary}): ${preview || "empty response"}`);
         }
 
+        // 检查是否返回了脚本源码（CGI 未执行）
+        if (responseText.includes("#!/system/bin/sh") || responseText.includes("CGI endpoint")) {
+            throw new Error(`严重错误: 服务器未执行 CGI 脚本，而是返回了源码。\n请检查模块日志(/data/local/tmp/ace6_debloat.log)中的 WebUI Debug Info。\n(Source=${serverTag})`);
+        }
+
         let result;
         try {
             result = JSON.parse(responseText);

@@ -82,6 +82,20 @@ start_webui() {
 
     # 启动 httpd
     log "Starting WebUI with: $bb httpd -p $port -h $MODDIR/webroot -c $MODDIR/webroot/httpd.conf"
+    
+    # === DEBUG INFO ===
+    log "--- WebUI Debug Info ---"
+    log "Busybox version: $($bb --help | head -n 1)"
+    log "httpd.conf content:"
+    cat "$MODDIR/webroot/httpd.conf" | while read l; do log "  $l"; done
+    log "CGI script permissions:"
+    ls -l "$MODDIR/webroot/cgi-bin/packages.cgi" | while read l; do log "  $l"; done
+    log "Testing CGI script execution (dry run):"
+    sh "$MODDIR/webroot/cgi-bin/packages.cgi" >/dev/null 2>&1
+    if [ $? -eq 0 ]; then log "  Execution test passed"; else log "  Execution test FAILED"; fi
+    log "------------------------"
+    # ==================
+
     $bb httpd -p $port -h "$MODDIR/webroot" -c "$MODDIR/webroot/httpd.conf"
     
     # === 混合架构核心：同步配置文件到 Web 目录 ===
