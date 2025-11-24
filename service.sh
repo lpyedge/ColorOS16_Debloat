@@ -81,8 +81,8 @@ start_webui() {
     $bb pkill -f "httpd -p $port" 2>/dev/null
 
     # 启动 httpd
-    log "Starting WebUI with: $bb httpd -p $port -h $MODDIR/webroot"
-    $bb httpd -p $port -h "$MODDIR/webroot"
+    log "Starting WebUI with: $bb httpd -p $port -h $MODDIR/webroot -c $MODDIR/webroot/cgi-bin"
+    $bb httpd -p $port -h "$MODDIR/webroot" -c "$MODDIR/webroot/cgi-bin"
     
     # === 混合架构核心：同步配置文件到 Web 目录 ===
     # 解决 CGI 读取失败的问题，改用静态文件读取
@@ -99,7 +99,7 @@ start_webui() {
         # 尝试使用备用端口 9899
         port=9899
         log "Retrying on port $port..."
-        $bb httpd -p $port -h "$MODDIR/webroot"
+        $bb httpd -p $port -h "$MODDIR/webroot" -c "$MODDIR/webroot/cgi-bin"
         if netstat -an | grep -q ":$port "; then
              log "WebUI started successfully at http://127.0.0.1:$port"
         else
