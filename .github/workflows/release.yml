@@ -108,8 +108,8 @@ jobs:
             echo "updateJson=${new_update_url}" >> module.prop
           fi
 
-          # Write changelog to webroot/changelog.md
-          echo "${BODY}" > webroot/changelog.md
+          # Write changelog to webroot/changelog.md using latest commit message
+          git log -1 --pretty=%B > webroot/changelog.md
 
           # prepare latest.json
           zip_url="https://github.com/${REPO}/releases/download/${TAG}/${zip_name}"
