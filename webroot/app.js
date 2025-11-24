@@ -104,20 +104,25 @@ async function savePackages(applyImmediately) {
             headers: { "Content-Type": "text/plain" },
             body: payload,
         });
+        const status = res.status;
+        const statusText = res.statusText;
+        const serverTag = res.headers.get("x-app-source") || "unknown";
+        const responseText = await res.text();
+        const debugSummary = `HTTP ${status} ${statusText} | source=${serverTag}`;
+        console.debug("savePackages response", debugSummary, responseText.slice(0, 300));
+
         if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || "保存失败");
+            const preview = responseText.slice(0, 200).replace(/[\r\n]+/g, " ");
+            throw new Error(`请求失败 (${debugSummary}): ${preview || "empty response"}`);
         }
-        
-        const text = await res.text();
+
         let result;
         try {
-            result = JSON.parse(text);
+            result = JSON.parse(responseText);
         } catch (e) {
             console.warn("JSON parse failed", e);
-            // 截取前100个字符用于调试显示
-            const preview = text.slice(0, 100).replace(/[\r\n]+/g, " ");
-            throw new Error(`服务器返回了无效的格式: ${preview}...`);
+            const preview = responseText.slice(0, 200).replace(/[\r\n]+/g, " ");
+            throw new Error(`服务器返回了无效的格式 (${debugSummary}): ${preview}...`);
         }
 
         if (result.success === false) {

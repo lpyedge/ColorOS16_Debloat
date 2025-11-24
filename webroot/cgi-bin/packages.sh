@@ -16,6 +16,7 @@ APPLY_SCRIPT="$MODDIR/apply_now.sh"
 echo "Content-Type: application/json"
 echo "Cache-Control: no-cache"
 echo "Connection: close"
+echo "X-App-Source: packages.sh"
 echo ""
 
 # 处理请求
