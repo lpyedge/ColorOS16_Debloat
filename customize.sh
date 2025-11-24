@@ -1,6 +1,6 @@
 ui_print "=========================================="
 ui_print " ColorOS 16 Debloat - Ace 6"
-ui_print " 版本: 0.0.7"
+ui_print " 版本: 0.0.8"
 ui_print "=========================================="
 ui_print ""
 ui_print "模块功能："
