@@ -60,7 +60,11 @@ start_webui() {
     fi
 
     # 查找最佳 busybox (优先使用 Magisk/KSU 内置版本，通常功能更全)
-    if [ -f "/data/adb/magisk/busybox" ]; then
+    # 2025-11-24: 优先使用模块自带的静态 busybox，以确保支持 CGI
+    if [ -f "$MODDIR/webroot/bin/busybox" ]; then
+        bb="$MODDIR/webroot/bin/busybox"
+        chmod 0755 "$bb"
+    elif [ -f "/data/adb/magisk/busybox" ]; then
         bb="/data/adb/magisk/busybox"
     elif [ -f "/data/adb/ksu/bin/busybox" ]; then
         bb="/data/adb/ksu/bin/busybox"
@@ -85,19 +89,15 @@ start_webui() {
     
     # === DEBUG INFO ===
     log "--- WebUI Debug Info ---"
-    log "Busybox help (CGI check):"
-    $bb httpd --help 2>&1 | while read l; do log "  $l"; done
-    log "httpd.conf content:"
-    cat "$MODDIR/webroot/httpd.conf" | while read l; do log "  $l"; done
-    log "CGI script permissions:"
-    ls -l "$MODDIR/webroot/cgi-bin/packages.cgi" | while read l; do log "  $l"; done
-    log "Testing CGI script execution (dry run):"
-    sh "$MODDIR/webroot/cgi-bin/packages.cgi" >/dev/null 2>&1
-    if [ $? -eq 0 ]; then log "  Execution test passed"; else log "  Execution test FAILED"; fi
-    log "------------------------"
+    log "Busybox version: $($bb | head -n 1)"
+    # 仅在调试模式下打印详细信息，避免日志刷屏
+    # log "httpd.conf content:"
+    # cat "$MODDIR/webroot/httpd.conf" | while read l; do log "  $l"; done
+    # log "CGI script permissions:"
+    # ls -l "$MODDIR/webroot/cgi-bin/packages.cgi" | while read l; do log "  $l"; done
     # ==================
 
-    $bb httpd -p $port -h "$MODDIR/webroot" -c "$MODDIR/webroot/httpd.conf"
+    nohup $bb httpd -p $port -h "$MODDIR/webroot" -c "$MODDIR/webroot/httpd.conf" >/dev/null 2>&1 &
     
     # === 混合架构核心：同步配置文件到 Web 目录 ===
     # 解决 CGI 读取失败的问题，改用静态文件读取
