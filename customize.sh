@@ -25,7 +25,7 @@ set_perm "$MODDIR/webroot/cgi-bin/packages.cgi" 0 0 0755
 
 # 修复 Windows 换行符 (CRLF -> LF)
 # 使用 tr 命令，兼容性优于 sed
-for file in "$MODDIR"/*.sh "$MODDIR"/*.prop "$MODDIR"/*.txt "$MODDIR"/webroot/cgi-bin/*.sh; do
+for file in "$MODDIR"/*.sh "$MODDIR"/*.prop "$MODDIR"/*.txt "$MODDIR"/webroot/cgi-bin/*.cgi; do
   if [ -f "$file" ]; then
     cat "$file" | tr -d '\r' > "${file}.tmp" && mv "${file}.tmp" "$file"
     chmod 0755 "$file"
