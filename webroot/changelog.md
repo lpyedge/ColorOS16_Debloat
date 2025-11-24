@@ -1,2 +1,2 @@
-feat: 更新 changelog 寫入方式，使用最新提交訊息取代手動輸入
+feat: 增加 WebUI 调试信息，检查 CGI 脚本执行状态并更新 httpd.conf
 
