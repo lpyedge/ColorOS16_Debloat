@@ -1,6 +1,6 @@
 ui_print "=========================================="
 ui_print " ColorOS16_Debloat - Magisk / KernelSU 模組"
-ui_print " 版本: 0.2.6"
+ui_print " 版本: 0.2.7"
 ui_print "=========================================="
 ui_print ""
 ui_print "模組用途："

@@ -1,2 +1,2 @@
-feat: 添加 decodeBase64Utf8 函数以处理 base64 解码，优化 loadPackages 函数的读取逻辑
+feat: 添加调试面板功能，支持复制调试日志；优化包禁用/启用逻辑
 
