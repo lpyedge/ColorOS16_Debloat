@@ -40,6 +40,9 @@ function normalizeExecResult(result) {
         return "";
     };
 
+    if (Array.isArray(result)) {
+        return { stdout: result.join("\n"), stderr: "", errno: 0 };
+    }
     if (typeof result === "number") return { stdout: "", stderr: "", errno: result };
     if (typeof result === "string") return { stdout: result, stderr: "", errno: 0 };
     if (!result || typeof result !== "object") return { stdout: "", stderr: "", errno: 0 };
@@ -243,11 +246,28 @@ async function loadPackages() {
         }
     }
 
-    const parsed = parsePackagesText(text);
+    const tryParse = (payload, label) => {
+        const parsed = parsePackagesText(payload);
+        logStep(`${label} 解析完成，分组数: ${parsed.groups.length}，文本长度: ${payload.length}`);
+        return parsed;
+    };
+
+    let parsed = tryParse(text, "Shell 读取");
+    if (!parsed.groups.length) {
+        // 解析失败时强制回退到前端副本再试
+        logStep("未解析到分组，尝试使用前端副本重新解析");
+        try {
+            const fallbackText = await fetchPackagesFromWebroot();
+            parsed = tryParse(fallbackText, "前端副本");
+            text = fallbackText;
+        } catch (fallbackErr) {
+            logStep(`前端副本读取失败: ${fallbackErr.message}`);
+        }
+    }
+
     state.header = parsed.header;
     state.groups = parsed.groups;
     render();
-    logStep(`加载完成，分组数: ${state.groups.length}`);
     if (!state.groups.length) {
         const sample = text.split("\n").slice(0, 10).join("\\n");
         logStep(`警告：未解析到任何分组，请检查 packages.txt 标题格式（# === xxx ===）；预览前10行: ${sample}`);
@@ -372,7 +392,7 @@ function parsePackagesText(text) {
         }
 
         // 允许前导 BOM、多个 #、以及标题前后有空格
-        const titleMatch = trimmed.match(/^\s*#\s*===.*===\s*$/) || (trimmed.includes("===") && /^#/.test(trimmed));
+        const titleMatch = trimmed.match(/^\s*#\s*===.*===\s*$/) || (trimmed.includes("===") && /^#+/.test(trimmed));
         if (titleMatch) {
             const cleaned = trimmed.replace(/^\s*#\s*/, "").trim();
             startGroup(cleaned);
