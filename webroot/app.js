@@ -141,8 +141,8 @@ async function execCommand(cmd) {
 async function loadPackages() {
     setStatus("加载中...");
     try {
-        // KernelSU 环境：直接读取 packages.txt
-        const text = await execCommand(`cat "${MODULE_PATH}/packages.txt"`);
+        // KernelSU 环境：直接读取 packages.txt（已迁移到 webroot/data）
+        const text = await execCommand(`cat "${MODULE_PATH}/webroot/data/packages.txt"`);
 
         const parsed = parsePackagesText(text);
         state.header = parsed.header;

@@ -6,7 +6,7 @@ ui_print ""
 ui_print "模块功能："
 ui_print "- 禁用 ColorOS 16 广告/云控/运维组件"
 ui_print "- 支持 WebUI 可视化管理包列表"
-ui_print "- 自动应用 packages.txt 配置"
+ui_print "- 自动应用 webroot/data/packages.txt 配置"
 ui_print ""
 
 

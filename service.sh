@@ -3,7 +3,7 @@
 # 在系统启动时禁用指定的应用包
 
 MODDIR="${0%/*}"
-PKGLIST="${MODDIR}/packages.txt"
+PKGLIST="${MODDIR}/webroot/data/packages.txt"
 LOGFILE="/data/local/tmp/ace6_debloat.log"
 MAX_BOOT_WAIT=300
 BOOT_WAIT_INTERVAL=5
@@ -43,8 +43,9 @@ fi
 
 # 同步 packages.txt 到 WebUI 目录，便于 KernelSU WebUI 读取
 sync_webroot_packages() {
-    local target="$MODDIR/webroot/packages.txt"
+    local target="$MODDIR/webroot/data/packages.txt"
     if [ -d "$MODDIR/webroot" ]; then
+        mkdir -p "$MODDIR/webroot/data" 2>/dev/null || true
         cp -f "$PKGLIST" "$target" 2>/dev/null
         chmod 0644 "$target" 2>/dev/null
     fi

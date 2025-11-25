@@ -5,8 +5,8 @@ Magisk 模块用于禁用 OnePlus Ace 6 / ColorOS 16 上的广告、云控与运
 ## 目录
 
 - `module.prop`：模块基础信息
-- `packages.txt`：按分组维护的包列表（带中文注释说明）
-- `service.sh`：开机时读取 `packages.txt` 并禁用未注释的包
+- `webroot/data/packages.txt`：按分组维护的包列表（带中文注释说明）
+- `service.sh`：开机时读取 `webroot/data/packages.txt` 并禁用未注释的包
 - `uninstall.sh`：卸载模块时重新启用所有包（包含被注释的行）
 - `apply_now.sh`：跳过开机等待，立即执行禁用流程
 - `webroot/`：Magisk WebUI 界面，可视化管理包列表
@@ -30,7 +30,7 @@ Magisk 模块用于禁用 OnePlus Ace 6 / ColorOS 16 上的广告、云控与运
 **界面功能：**
 - 按分组查看所有包名与中文注释
 - 勾选代表"禁用"，取消勾选代表"保留"
-- 点击"保存"只更新 `packages.txt`
+- 点击"保存"只更新 `webroot/data/packages.txt`
 - 点击"保存并立即应用"会自动执行禁用，立刻生效（无需重启）
 
 ## 手动应用更改
@@ -46,10 +46,10 @@ sh apply_now.sh
 
 ## 卸载行为
 
-`uninstall.sh` 会遍历 `packages.txt` 中出现过的所有包，即使其前面带有 `#` 也会重新启用，确保系统状态完全恢复。
+`uninstall.sh` 会遍历 `webroot/data/packages.txt` 中出现过的所有包，即使其前面带有 `#` 也会重新启用，确保系统状态完全恢复。
 
 ## 注意事项
 
 - 禁用 OTA/SAU 相关包会阻止系统更新，请在升级前手动重新启用。
 - Watchdog/性能调度（如 `com.coloros.phoenix`）禁用后可能影响系统稳定性，请谨慎选择。
-- WebUI 会直接修改 `packages.txt`，编辑时请避免在包名后插入需要解析的特殊字符。
+-- WebUI 会直接修改 `webroot/data/packages.txt`，编辑时请避免在包名后插入需要解析的特殊字符。

@@ -6,9 +6,11 @@ set -eu
 
 SCRIPT_DIR="${0%/*}"
 MODDIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-TMP_FILE="$MODDIR/packages.txt.tmp"
-TARGET_FILE="$MODDIR/packages.txt"
-WEBROOT_FILE="$MODDIR/webroot/packages.txt"
+# ensure webroot/data exists
+mkdir -p "$MODDIR/webroot/data"
+TMP_FILE="$MODDIR/webroot/data/packages.txt.tmp"
+TARGET_FILE="$MODDIR/webroot/data/packages.txt"
+WEBROOT_FILE="$MODDIR/webroot/data/packages.txt"
 
 if [ $# -lt 1 ] || [ -z "$1" ]; then
     echo "Usage: $0 <base64_payload>" >&2

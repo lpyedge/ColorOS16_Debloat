@@ -3,7 +3,7 @@
 # 卸载模块时重新启用之前禁用的应用包
 
 MODDIR="${0%/*}"
-PKGLIST="${MODDIR}/packages.txt"
+PKGLIST="${MODDIR}/webroot/data/packages.txt"
 LOGFILE="/data/local/tmp/ace6_debloat_uninstall.log"
 TAIL_LINES=2000
 
