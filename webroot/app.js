@@ -184,6 +184,16 @@ function ensureBridge() {
     return bridge;
 }
 
+function decodeBase64Utf8(b64) {
+    const clean = (b64 || "").replace(/[^A-Za-z0-9+/=]/g, "");
+    const binary = atob(clean);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return new TextDecoder("utf-8").decode(bytes);
+}
+
 async function execCommand(cmd) {
     const bridge = ensureBridge();
     logStep(`执行命令: ${cmd}`);
@@ -230,8 +240,8 @@ async function loadPackages() {
 
     try {
         // 用 base64 读取，避免桥接输出被截断
-        const b64 = await execCommand(`base64 "${PACKAGE_FILE}"`);
-        text = decodeURIComponent(escape(atob(b64)));
+        const b64 = await execCommand(`cat "${PACKAGE_FILE}" | base64 | tr -d '\\n'`);
+        text = decodeBase64Utf8(b64);
         logStep(`通过 Shell(base64) 读取 packages.txt 成功，长度: ${text.length}`);
     } catch (err) {
         shellError = err;
