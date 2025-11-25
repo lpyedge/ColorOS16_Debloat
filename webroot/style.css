@@ -5,13 +5,15 @@ body {
     background: #f0f2f5;
     color: #1c1e21;
     -webkit-tap-highlight-color: transparent;
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 header {
     background: #fff;
     color: #000;
     padding: 1rem;
-    padding-top: calc(1rem + env(safe-area-inset-top));
+    padding-top: calc(1rem + var(--safe-area-top));
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     position: sticky;
     top: 0;
@@ -78,7 +80,7 @@ button:active {
 
 main {
     padding: 1rem;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
     max-width: 800px;
     margin: 0 auto;
 }

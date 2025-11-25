@@ -8,34 +8,139 @@ const MODULE_ID = "coloros16_debloat";
 const MODULE_PATH = `/data/adb/modules/${MODULE_ID}`;
 const SAVE_SCRIPT = `${MODULE_PATH}/webroot/scripts/save_packages.sh`;
 
-// 检查是否在 KernelSU/WebUI 环境中
-function isKsuEnv() {
-    return typeof ksu !== 'undefined' && ksu.exec;
+const BRIDGE_WAIT_RETRIES = 10;
+const BRIDGE_WAIT_DELAY = 250;
+let cachedBridge = null;
+
+function normalizeExecResult(result) {
+    if (typeof result === "string") {
+        return { stdout: result, stderr: "", errno: 0 };
+    }
+    if (!result || typeof result !== "object") {
+        return { stdout: "", stderr: "", errno: 0 };
+    }
+    const codeKeys = ["errno", "code", "exitCode"];
+    let errno = 0;
+    for (const key of codeKeys) {
+        if (typeof result[key] === "number") {
+            errno = result[key];
+            break;
+        }
+    }
+    return {
+        stdout: typeof result.stdout === "string" ? result.stdout : "",
+        stderr: typeof result.stderr === "string" ? result.stderr : "",
+        errno,
+    };
+}
+
+function detectBridge() {
+    if (typeof ksu !== "undefined" && typeof ksu.exec === "function") {
+        return {
+            name: "KernelSU",
+            exec: async (command) => {
+                const output = await ksu.exec(command);
+                return normalizeExecResult(output);
+            },
+            toast: (message) => {
+                if (typeof ksu.toast === "function") {
+                    ksu.toast(message);
+                } else {
+                    console.log(message);
+                }
+            },
+        };
+    }
+
+    if (typeof window !== "undefined") {
+        const candidates = [
+            window.webui,
+            window.WebUI,
+            window.webuix,
+            window.wx,
+            window.$wx,
+            window.$webui,
+            window.$ksuwebui,
+            window.$ksuwebui_demo,
+        ].filter(Boolean);
+
+        for (const candidate of candidates) {
+            if (typeof candidate.exec === "function") {
+                return {
+                    name: "WebUI X",
+                    exec: async (command) => {
+                        const output = await candidate.exec(command);
+                        return normalizeExecResult(output);
+                    },
+                    toast: (message) => {
+                        if (typeof candidate.toast === "function") {
+                            candidate.toast(message);
+                        } else if (window.webui && typeof window.webui.toast === "function") {
+                            window.webui.toast(message);
+                        } else {
+                            console.log(message);
+                        }
+                    },
+                };
+            }
+        }
+    }
+
+    return null;
+}
+
+function getBridge() {
+    if (cachedBridge) {
+        return cachedBridge;
+    }
+    const detected = detectBridge();
+    if (detected) {
+        cachedBridge = detected;
+    }
+    return cachedBridge;
+}
+
+async function waitForBridge(retries = BRIDGE_WAIT_RETRIES, delay = BRIDGE_WAIT_DELAY) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+        const bridge = getBridge();
+        if (bridge) {
+            return bridge;
+        }
+        await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    return null;
+}
+
+function ensureBridge() {
+    const bridge = getBridge();
+    if (!bridge) {
+        throw new Error("未检测到 KernelSU 或 WebUI X JS API，请在支持的管理器里打开 WebUI");
+    }
+    return bridge;
 }
 
 // 执行 Shell 命令的通用函数
 async function execCommand(cmd) {
-    if (isKsuEnv()) {
-        try {
-            const result = await ksu.exec(cmd);
-            // ksu.exec 返回 stdout 字符串，如果 exit code != 0 会抛出异常
-            return typeof result === "string" ? result : "";
-        } catch (e) {
-            console.error("KSU Exec Error:", e);
-            throw new Error(`KSU Exec Error: ${e}`);
-        }
-    } else {
-        throw new Error("Not in KSU environment");
+    const bridge = ensureBridge();
+    let result;
+    try {
+        result = await bridge.exec(cmd);
+    } catch (err) {
+        console.error("Shell Exec Error:", err);
+        throw new Error(err?.message || String(err));
     }
+
+    const normalized = normalizeExecResult(result);
+    if (normalized.errno !== 0) {
+        const reason = normalized.stderr || `命令执行失败 (exit ${normalized.errno})`;
+        throw new Error(reason);
+    }
+    return normalized.stdout;
 }
 
 async function loadPackages() {
     setStatus("加载中...");
     try {
-        if (!isKsuEnv()) {
-            throw new Error("未检测到 KernelSU JS API，请在 KernelSU 管理器中打开 WebUI");
-        }
-
         // KernelSU 环境：直接读取 packages.txt
         const text = await execCommand(`cat "${MODULE_PATH}/packages.txt"`);
 
@@ -123,10 +228,6 @@ function cleanTitle(title) {
 async function savePackages(applyImmediately) {
     setStatus("保存中...");
     try {
-        if (!isKsuEnv()) {
-            throw new Error("未检测到 KernelSU JS API，无法保存配置");
-        }
-
         const payload = buildPackagesText(state);
         const b64 = btoa(unescape(encodeURIComponent(payload)));
 
@@ -305,13 +406,17 @@ window.addEventListener("DOMContentLoaded", () => {
 
     saveBtn.addEventListener("click", () => savePackages(false));
     saveApplyBtn.addEventListener("click", () => savePackages(true));
+    saveBtn.disabled = true;
+    saveApplyBtn.disabled = true;
 
-    if (!isKsuEnv()) {
-        setStatus("KernelSU JS API 未检测到：请在 KernelSU 管理器中打开 WebUI");
-        saveBtn.disabled = true;
-        saveApplyBtn.disabled = true;
-        return;
-    }
+    waitForBridge().then((bridge) => {
+        if (!bridge) {
+            setStatus("未检测到 KernelSU / WebUI X JS API，请从支持的宿主应用打开");
+            return;
+        }
 
-    loadPackages();
+        saveBtn.disabled = false;
+        saveApplyBtn.disabled = false;
+        loadPackages();
+    });
 });
