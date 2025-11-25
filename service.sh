@@ -4,7 +4,7 @@
 
 MODDIR="${0%/*}"
 PKGLIST="${MODDIR}/webroot/data/packages.txt}"
-LOGFILE="/data/local/tmp/ace6_debloat.log"
+LOGFILE="/data/local/tmp/coloros16_debloat.log"
 MAX_BOOT_WAIT=300
 BOOT_WAIT_INTERVAL=5
 MAX_DISABLE_RETRY=3
@@ -25,7 +25,7 @@ log() {
 }
 
 log "============================================"
-log "Ace6 Debloat Service started"
+log "ColorOS 16 Debloat Service started"
 log "Module Dir: $MODDIR"
 log "============================================"
 

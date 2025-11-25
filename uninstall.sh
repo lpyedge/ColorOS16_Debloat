@@ -4,7 +4,7 @@
 
 MODDIR="${0%/*}"
 PKGLIST="${MODDIR}/webroot/data/packages.txt"
-LOGFILE="/data/local/tmp/ace6_debloat_uninstall.log"
+LOGFILE="/data/local/tmp/coloros16_debloat_uninstall.log"
 TAIL_LINES=2000
 
 if [ -f "$LOGFILE" ] && command -v tail >/dev/null 2>&1; then
@@ -47,7 +47,7 @@ extract_pkg_from_line() {
 }
 
 log "============================================"
-log "Ace6 Debloat Uninstall started"
+log "ColorOS 16 Debloat Uninstall started"
 log "Module Dir: $MODDIR"
 log "============================================"
 
@@ -135,7 +135,8 @@ log "Failed: $failed"
 log "============================================"
 
 # 清理日志文件(可选)
-# rm -f /data/local/tmp/ace6_debloat.log
+rm -f /data/local/tmp/coloros16_debloat.log
+rm -f /data/local/tmp/coloros16_debloat_uninstall.log
 
 if command -v settings >/dev/null 2>&1; then
     settings delete global pkg_watchdog_enable >/dev/null 2>&1 && log "[INFO] pkg_watchdog setting restored"

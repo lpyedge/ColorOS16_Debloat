@@ -50,6 +50,6 @@ cat /data/adb/modules/coloros16_debloat/webroot/data/packages.txt
 
 ## 日志与排查
 - WebUI 顶部状态与 debug 区会显示当前步骤与执行日志，便于定位问题。
-- 开机/应用时的后台日志：`/data/local/tmp/ace6_debloat.log`
-- 卸载日志：`/data/local/tmp/ace6_debloat_uninstall.log`
+- 开机/应用时的后台日志：`/data/local/tmp/coloros16_debloat.log`
+- 卸载日志：`/data/local/tmp/coloros16_debloat_uninstall.log`
 
