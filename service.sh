@@ -1,9 +1,9 @@
 #!/system/bin/sh
 # ColorOS 16 Debloat - Service Script
-# 在系统启动时禁用指定的应用包
+# 在系统启动时按列表禁用/启用包
 
 MODDIR="${0%/*}"
-PKGLIST="${MODDIR}/webroot/data/packages.txt"
+PKGLIST="${MODDIR}/webroot/data/packages.txt}"
 LOGFILE="/data/local/tmp/ace6_debloat.log"
 MAX_BOOT_WAIT=300
 BOOT_WAIT_INTERVAL=5
@@ -68,7 +68,7 @@ else
     done
 
     sleep 10
-    log "[INFO] System boot completed, starting package disable operations..."
+    log "[INFO] System boot completed, starting package operations..."
 fi
 
 # 关闭 pkg watchdog 以减少回滚
@@ -92,12 +92,11 @@ get_user_list() {
 USERS="$(get_user_list)"
 log "[INFO] Target users: $USERS"
 
-# 禁用包的函数
+# 禁用函数
 disable_package() {
     local pkg="$1"
     local user result overall=0
 
-    # 检查包是否存在 (即使已禁用也能检测)
     if ! pm path "$pkg" >/dev/null 2>&1; then
         log "[SKIP] Package not found: $pkg"
         return 2
@@ -134,48 +133,84 @@ disable_package() {
     return $overall
 }
 
-# 统计计数器
-total=0
-disabled=0
-skipped=0
-failed=0
+# 启用函数（用于 # 注释行）
+enable_package() {
+    local pkg="$1"
+    local user overall=0 result
 
-# 读取包列表并逐行处理
+    if ! pm path "$pkg" >/dev/null 2>&1; then
+        log "[SKIP] Package not found (enable): $pkg"
+        return 2
+    fi
+
+    for user in $USERS; do
+        if pm enable --user "$user" "$pkg" 2>/dev/null; then
+            log "[OK] Enabled for user $user: $pkg"
+        else
+            log "[FAIL] Failed to enable for user $user: $pkg"
+            overall=1
+        fi
+    done
+
+    return $overall
+}
+
+# 统计计数器
+total_disable=0
+disabled_ok=0
+skipped_disable=0
+failed_disable=0
+total_enable=0
+enabled_ok=0
+skipped_enable=0
+failed_enable=0
+
+# 读取包列表并逐行执行（未注释行=禁用，带 # 行=启用）
 while IFS= read -r line || [ -n "$line" ]; do
-    # 移除行首尾空白
     line=$(printf '%s\n' "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    
-    # 跳过空行和注释行
-    if [ -z "$line" ] || [ "${line#\#}" != "$line" ]; then
+    if [ -z "$line" ]; then
         continue
     fi
-    
-    # 提取包名（去掉注释部分）
-    # 使用 cut -d'#' -f1 去掉行内注释，再用 awk 提取第一个字段(包名)
-    pkg=$(printf '%s\n' "$line" | cut -d'#' -f1 | awk '{print $1}')
-    if [ -z "$pkg" ]; then
+
+    mode="disable"
+    working="$line"
+    if [ "${working#\#}" != "$working" ]; then
+        mode="enable"
+        working=$(printf '%s\n' "${working#\#}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    fi
+
+    pkg=$(printf '%s\n' "$working" | cut -d'#' -f1 | awk '{print $1}')
+    if [ -z "$pkg" ] || [ "${pkg#\#}" != "$pkg" ]; then
         continue
     fi
-    
-    total=$((total + 1))
-    disable_package "$pkg"
-    result=$?
-    
-    case $result in
-        0) disabled=$((disabled + 1)) ;;
-        1) failed=$((failed + 1)) ;;
-        2) skipped=$((skipped + 1)) ;;
-    esac
-    
+
+    if [ "$mode" = "enable" ]; then
+        total_enable=$((total_enable + 1))
+        enable_package "$pkg"
+        result=$?
+        case $result in
+            0) enabled_ok=$((enabled_ok + 1)) ;;
+            1) failed_enable=$((failed_enable + 1)) ;;
+            2) skipped_enable=$((skipped_enable + 1)) ;;
+        esac
+    else
+        total_disable=$((total_disable + 1))
+        disable_package "$pkg"
+        result=$?
+        case $result in
+            0) disabled_ok=$((disabled_ok + 1)) ;;
+            1) failed_disable=$((failed_disable + 1)) ;;
+            2) skipped_disable=$((skipped_disable + 1)) ;;
+        esac
+    fi
+
 done < "$PKGLIST"
 
 # 输出统计信息
 log "============================================"
 log "Debloat operation completed"
-log "Total packages processed: $total"
-log "Successfully disabled: $disabled"
-log "Skipped (not found): $skipped"
-log "Failed: $failed"
+log "Disable - total: $total_disable, ok: $disabled_ok, skipped(not found): $skipped_disable, failed: $failed_disable"
+log "Enable  - total: $total_enable, ok: $enabled_ok, skipped(not found): $skipped_enable, failed: $failed_enable"
 log "============================================"
 
 exit 0

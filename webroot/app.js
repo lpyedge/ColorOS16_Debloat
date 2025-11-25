@@ -496,6 +496,8 @@ function buildPackagesText(data) {
 function initUI() {
     const saveBtn = document.getElementById("save");
     const saveApplyBtn = document.getElementById("saveApply");
+    const debugEl = document.getElementById("debug");
+    const debugPanel = document.getElementById("debug-panel");
 
     saveBtn.addEventListener("click", () => savePackages(false));
     saveApplyBtn.addEventListener("click", () => savePackages(true));
@@ -508,6 +510,44 @@ function initUI() {
         window.visualViewport.addEventListener("scroll", applySafeAreaInsets);
     }
     window.addEventListener("resize", applySafeAreaInsets);
+
+    if (debugPanel && debugEl) {
+        debugPanel.addEventListener("toggle", () => {
+            if (debugPanel.open) {
+                debugEl.scrollTop = debugEl.scrollHeight;
+            }
+        });
+
+        const copyDebug = async () => {
+            try {
+                await navigator.clipboard.writeText(debugEl.textContent || "");
+                if (cachedBridge && cachedBridge.toast) {
+                    cachedBridge.toast("复制调试日志成功");
+                } else {
+                    logStep("复制调试日志成功");
+                }
+            } catch (err) {
+                logStep("复制调试日志失败: " + (err?.message || err));
+            }
+        };
+
+        debugEl.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            copyDebug();
+        });
+        debugEl.addEventListener("pointerdown", (e) => {
+            let timer = setTimeout(copyDebug, 600);
+            const clear = () => {
+                clearTimeout(timer);
+                debugEl.removeEventListener("pointerup", clear);
+                debugEl.removeEventListener("pointercancel", clear);
+                debugEl.removeEventListener("pointerleave", clear);
+            };
+            debugEl.addEventListener("pointerup", clear);
+            debugEl.addEventListener("pointercancel", clear);
+            debugEl.addEventListener("pointerleave", clear);
+        });
+    }
 }
 
 async function bootstrap() {
