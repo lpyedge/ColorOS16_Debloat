@@ -1,2 +1,2 @@
-feat: 更新 app.js 以支持 KernelSU 和 WebUI X JS API，优化命令执行逻辑；更新 style.css 以使用 CSS 变量处理安全区域
+feat: 优化 execCommand 函数，增强结果处理逻辑；添加安全区域处理功能
 
