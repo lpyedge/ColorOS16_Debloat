@@ -229,11 +229,20 @@ async function loadPackages() {
     let shellError = null;
 
     try {
-        text = await execCommand(`cat "${PACKAGE_FILE}"`);
-        logStep("通过 Shell 读取 packages.txt 成功");
+        // 用 base64 读取，避免桥接输出被截断
+        const b64 = await execCommand(`base64 "${PACKAGE_FILE}"`);
+        text = decodeURIComponent(escape(atob(b64)));
+        logStep(`通过 Shell(base64) 读取 packages.txt 成功，长度: ${text.length}`);
     } catch (err) {
         shellError = err;
-        logStep(`Shell 读取失败，尝试前端副本: ${err.message}`);
+        logStep(`Shell base64 读取失败，尝试直接 cat: ${err.message}`);
+        try {
+            text = await execCommand(`cat "${PACKAGE_FILE}"`);
+            logStep(`通过 Shell(cat) 读取 packages.txt 成功，长度: ${text.length}`);
+        } catch (errCat) {
+            shellError = errCat;
+            logStep(`Shell cat 读取失败，尝试前端副本: ${errCat.message}`);
+        }
     }
 
     if (!text || !text.trim()) {
@@ -356,8 +365,11 @@ async function savePackages(applyImmediately) {
 
         let msg = "保存成功";
         if (applyImmediately) {
-            await execCommand(`nohup sh "${APPLY_SCRIPT}" >/dev/null 2>&1 &`);
-            msg += " (已触发应用)";
+            const applyOutput = await execCommand(`sh "${APPLY_SCRIPT}" 2>&1`);
+            msg += " (已执行应用)";
+            if (applyOutput && applyOutput.trim()) {
+                logStep(`应用输出: ${applyOutput.trim().slice(0, 400)}`);
+            }
         }
 
         logStep(msg);
