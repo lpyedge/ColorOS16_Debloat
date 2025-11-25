@@ -8,9 +8,13 @@ const MODULE_ID = "coloros16_debloat";
 const MODULE_PATH = `/data/adb/modules/${MODULE_ID}`;
 const SAVE_SCRIPT = `${MODULE_PATH}/webroot/scripts/save_packages.sh`;
 
-const BRIDGE_WAIT_RETRIES = 10;
+const BRIDGE_WAIT_RETRIES = 40;
 const BRIDGE_WAIT_DELAY = 250;
 let cachedBridge = null;
+
+if (typeof window !== "undefined" && window.apatch && !window.ksu) {
+    window.ksu = window.apatch;
+}
 
 function normalizeExecResult(result) {
     const pickFirstString = (obj, keys) => {
@@ -22,6 +26,9 @@ function normalizeExecResult(result) {
         return "";
     };
 
+    if (typeof result === "number") {
+        return { stdout: "", stderr: "", errno: result };
+    }
     if (typeof result === "string") {
         return { stdout: result, stderr: "", errno: 0 };
     }
@@ -50,12 +57,74 @@ function normalizeExecResult(result) {
     };
 }
 
+async function callExecWithFallback(execFn, command) {
+    let lastError = null;
+    try {
+        const direct = execFn(command);
+        if (direct && typeof direct.then === "function") {
+            return await direct;
+        }
+        if (direct !== undefined) {
+            return direct;
+        }
+    } catch (err) {
+        lastError = err;
+    }
+
+    if (execFn.length >= 3 && typeof window !== "undefined") {
+        return await new Promise((resolve, reject) => {
+            const cbName = `_wx_cb_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            window[cbName] = (errno, stdout, stderr) => {
+                delete window[cbName];
+                resolve({
+                    errno: typeof errno === "number" ? errno : 0,
+                    stdout: stdout || "",
+                    stderr: stderr || "",
+                });
+            };
+            try {
+                execFn(command, {}, cbName);
+            } catch (err) {
+                delete window[cbName];
+                reject(err);
+            }
+        });
+    }
+
+    if (execFn.length >= 2) {
+        return await new Promise((resolve, reject) => {
+            try {
+                execFn(command, (res, stdout, stderr) => {
+                    if (res && typeof res === "object") {
+                        resolve(res);
+                        return;
+                    }
+                    resolve({
+                        errno: typeof res === "number" ? res : 0,
+                        stdout: stdout || "",
+                        stderr: stderr || "",
+                    });
+                });
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    if (lastError) {
+        throw lastError;
+    }
+
+    throw new Error("exec API 不兼容");
+}
+
 function detectBridge() {
     if (typeof ksu !== "undefined" && typeof ksu.exec === "function") {
+        const execFn = ksu.exec.bind(ksu);
         return {
             name: "KernelSU",
             exec: async (command) => {
-                const output = await ksu.exec(command);
+                const output = await callExecWithFallback(execFn, command);
                 return normalizeExecResult(output);
             },
             toast: (message) => {
@@ -82,10 +151,11 @@ function detectBridge() {
 
         for (const candidate of candidates) {
             if (typeof candidate.exec === "function") {
+                const execFn = candidate.exec.bind(candidate);
                 return {
                     name: "WebUI X",
                     exec: async (command) => {
-                        const output = await candidate.exec(command);
+                        const output = await callExecWithFallback(execFn, command);
                         return normalizeExecResult(output);
                     },
                     toast: (message) => {
@@ -173,6 +243,8 @@ function applySafeAreaInsets() {
     const insets = getSafeAreaInsets();
     document.documentElement.style.setProperty("--safe-area-top", `${insets.top}px`);
     document.documentElement.style.setProperty("--safe-area-bottom", `${insets.bottom}px`);
+    document.documentElement.style.setProperty("--window-inset-top", `${insets.top}px`);
+    document.documentElement.style.setProperty("--window-inset-bottom", `${insets.bottom}px`);
 }
 
 async function fetchPackagesFromWebroot() {
@@ -485,5 +557,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
         saveBtn.disabled = false;
         saveApplyBtn.disabled = false;
+        loadPackages();
     });
 });
