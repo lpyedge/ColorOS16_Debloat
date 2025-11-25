@@ -1,2 +1,2 @@
-feat: 优化 app.js 中的日志记录，添加未解析分组的预览信息；调整分组标题的匹配规则以支持更多格式
+feat: 优化 normalizeExecResult 和 loadPackages 函数，增强解析逻辑并添加失败回退机制
 
