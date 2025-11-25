@@ -1,2 +1,2 @@
-feat: 更新 README 和 customize.sh，調整模組描述與功能說明；刪除過時的 packages.txt 文件
+feat: 更新 README 和 customize.sh，优化模块描述与功能说明；调整 app.js 中的日志记录与解析逻辑
 
