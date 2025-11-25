@@ -41,122 +41,16 @@ if [ ! -f "$PKGLIST" ]; then
     exit 1
 fi
 
-# 解析参数
-NO_WEBUI=0
-for arg in "$@"; do
-    if [ "$arg" = "--no-webui" ]; then
-        NO_WEBUI=1
-    fi
-done
-
-# 启动 WebUI 服务 (Magisk 兼容模式)
-start_webui() {
-    local port=9898
-    local bb="busybox"
-    
-    # 检测 KSU 环境 (仅记录日志，不影响启动备用 WebUI)
-    if [ -d "/data/adb/ksu" ] || [ -f "/data/adb/ksu/bin/ksu" ]; then
-         log "[INFO] KernelSU environment detected."
-    fi
-
-    # 查找最佳 busybox (优先使用 Magisk/KSU 内置版本，通常功能更全)
-    # 2025-11-24: 优先使用模块自带的静态 busybox，以确保支持 CGI
-    if [ -f "$MODDIR/webroot/bin/busybox" ]; then
-        bb="$MODDIR/webroot/bin/busybox"
-        chmod 0755 "$bb"
-    elif [ -f "/data/adb/magisk/busybox" ]; then
-        bb="/data/adb/magisk/busybox"
-    elif [ -f "/data/adb/ksu/bin/busybox" ]; then
-        bb="/data/adb/ksu/bin/busybox"
-    elif command -v busybox >/dev/null; then
-        bb="busybox"
-    else
-        log "[WARN] Busybox not found, WebUI cannot start"
-        return
-    fi
-
-    # 检查 httpd 功能是否支持
-    if ! $bb httpd --help >/dev/null 2>&1; then
-        log "[WARN] Selected busybox ($bb) does not support httpd applet"
-        return
-    fi
-
-    # 强制清理旧进程 (防止僵尸进程占用端口)
-    $bb pkill -f "httpd -p $port" 2>/dev/null
-
-    # 启动 httpd
-    log "Starting WebUI with: $bb httpd -p $port -h $MODDIR/webroot -c $MODDIR/webroot/httpd.conf"
-    
-    # === DEBUG INFO ===
-    log "--- WebUI Debug Info ---"
-    log "Busybox version: $($bb | head -n 1)"
-    # 仅在调试模式下打印详细信息，避免日志刷屏
-    # log "httpd.conf content:"
-    # cat "$MODDIR/webroot/httpd.conf" | while read l; do log "  $l"; done
-    # log "CGI script permissions:"
-    # ls -l "$MODDIR/webroot/cgi-bin/packages.cgi" | while read l; do log "  $l"; done
-    # ==================
-
-    nohup $bb httpd -p $port -h "$MODDIR/webroot" -c "$MODDIR/webroot/httpd.conf" >/dev/null 2>&1 &
-    
-    # === 混合架构核心：同步配置文件到 Web 目录 ===
-    # 解决 CGI 读取失败的问题，改用静态文件读取
-    cp -f "$PKGLIST" "$MODDIR/webroot/packages.txt"
-    chmod 0644 "$MODDIR/webroot/packages.txt"
-    # ===========================================
-    
-    # 验证启动状态
-    sleep 1
-    if netstat -an | grep -q ":$port "; then
-        log "WebUI started successfully at http://127.0.0.1:$port"
-    else
-        log "[ERROR] WebUI failed to bind port $port. Check if port is in use or permission denied."
-        # 尝试使用备用端口 9899
-        port=9899
-        log "Retrying on port $port..."
-        $bb httpd -p $port -h "$MODDIR/webroot" -c "$MODDIR/webroot/httpd.conf"
-        if netstat -an | grep -q ":$port "; then
-             log "WebUI started successfully at http://127.0.0.1:$port"
-        else
-             log "[ERROR] WebUI failed to start on backup port either."
-        fi
+# 同步 packages.txt 到 WebUI 目录，便于 KernelSU WebUI 读取
+sync_webroot_packages() {
+    local target="$MODDIR/webroot/packages.txt"
+    if [ -d "$MODDIR/webroot" ]; then
+        cp -f "$PKGLIST" "$target" 2>/dev/null
+        chmod 0644 "$target" 2>/dev/null
     fi
 }
 
-# === 关键修复：确保 CGI 脚本可执行且无 Windows 换行符 ===
-# 这步操作在每次开机时执行，防止 customize.sh 修复失败
-CGI_DIR="$MODDIR/webroot/cgi-bin"
-CGI_SCRIPT="$CGI_DIR/packages.cgi"
-
-if [ -d "$CGI_DIR" ]; then
-    chmod 0755 "$CGI_DIR"
-fi
-
-if [ -f "$CGI_SCRIPT" ]; then
-    log "Fixing CGI script permissions and line endings..."
-    chmod 0755 "$CGI_SCRIPT"
-    
-    # 尝试设置 SELinux 上下文，防止执行被拒绝
-    chcon u:object_r:system_file:s0 "$CGI_SCRIPT" 2>/dev/null || true
-    
-    # 使用 tr 删除 \r，比 sed -i 兼容性更好
-    cat "$CGI_SCRIPT" | tr -d '\r' > "${CGI_SCRIPT}.tmp"
-    # 确保文件内容不为空再覆盖
-    if [ -s "${CGI_SCRIPT}.tmp" ]; then
-        mv "${CGI_SCRIPT}.tmp" "$CGI_SCRIPT"
-        chmod 0755 "$CGI_SCRIPT"
-        chcon u:object_r:system_file:s0 "$CGI_SCRIPT" 2>/dev/null || true
-    else
-        rm "${CGI_SCRIPT}.tmp"
-    fi
-else
-    log "[ERROR] CGI script not found: $CGI_SCRIPT"
-fi
-# ========================================================
-
-if [ "$NO_WEBUI" -eq 0 ]; then
-    start_webui
-fi
+sync_webroot_packages
 
 if [ "$SKIP_BOOT_WAIT" -eq 1 ]; then
     log "[INFO] SKIP_BOOT_WAIT=1, skipping boot-complete wait"

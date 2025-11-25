@@ -20,14 +20,15 @@ set_perm_recursive "$MODDIR" 0 0 0755 0644
 set_perm "$MODDIR/service.sh" 0 0 0755
 set_perm "$MODDIR/apply_now.sh" 0 0 0755
 set_perm "$MODDIR/uninstall.sh" 0 0 0755
-# 关键：确保 CGI 脚本可执行，这对 KernelSU 和 Magisk WebUI 都至关重要
-set_perm "$MODDIR/webroot/cgi-bin/packages.cgi" 0 0 0755
+set_perm "$MODDIR/webroot/scripts/save_packages.sh" 0 0 0755
 
 # 修复 Windows 换行符 (CRLF -> LF)
-# 使用 tr 命令，兼容性优于 sed
-for file in "$MODDIR"/*.sh "$MODDIR"/*.prop "$MODDIR"/*.txt "$MODDIR"/webroot/cgi-bin/*.cgi; do
+for file in "$MODDIR"/*.sh "$MODDIR"/*.prop "$MODDIR"/*.txt "$MODDIR"/webroot/scripts/*.sh; do
   if [ -f "$file" ]; then
     cat "$file" | tr -d '\r' > "${file}.tmp" && mv "${file}.tmp" "$file"
-    chmod 0755 "$file"
+    case "$file" in
+      *.sh) chmod 0755 "$file" ;;
+      *) chmod 0644 "$file" ;;
+    esac
   fi
 done

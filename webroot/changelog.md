@@ -1,2 +1,2 @@
-feat: 重构 CGI 脚本，移除旧的 packages.cgi，新增 packages.cgi 以支持读取和更新 packages.txt，更新相关权限和配置
+feat: WebUI 迁移到 KernelSU JS API，移除 busybox/httpd/CGI，新增 save_packages.sh 脚本以处理配置写入
 

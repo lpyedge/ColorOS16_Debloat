@@ -6,6 +6,7 @@ const state = {
 // 模块 ID，必须与 module.prop 中的 id 一致
 const MODULE_ID = "coloros16_debloat";
 const MODULE_PATH = `/data/adb/modules/${MODULE_ID}`;
+const SAVE_SCRIPT = `${MODULE_PATH}/webroot/scripts/save_packages.sh`;
 
 // 检查是否在 KernelSU/WebUI 环境中
 function isKsuEnv() {
@@ -18,8 +19,7 @@ async function execCommand(cmd) {
         try {
             const result = await ksu.exec(cmd);
             // ksu.exec 返回 stdout 字符串，如果 exit code != 0 会抛出异常
-            // 注意：ksu.exec 的返回值可能包含换行符，通常需要 trim
-            return result ? result.trim() : "";
+            return typeof result === "string" ? result : "";
         } catch (e) {
             console.error("KSU Exec Error:", e);
             throw new Error(`KSU Exec Error: ${e}`);
@@ -32,27 +32,12 @@ async function execCommand(cmd) {
 async function loadPackages() {
     setStatus("加载中...");
     try {
-        let text = "";
-        
-        if (isKsuEnv()) {
-            // === KSU 环境：直接读取文件 ===
-            console.log("Using KSU API to load packages");
-            // 使用 cat 读取，如果文件不存在会抛出异常
-            text = await execCommand(`cat "${MODULE_PATH}/packages.txt"`);
-        } else {
-            // === 浏览器/Magisk 环境：通过 HTTP 获取静态文件 ===
-            // 加上时间戳防止缓存
-            const url = `/packages.txt?_=${Date.now()}`;
-            const res = await fetch(url);
-            if (!res.ok) {
-                // 如果 packages.txt 不存在（例如首次运行且未同步），尝试加载默认列表
-                if (res.status === 404) {
-                    console.warn("packages.txt not found, trying CGI fallback or empty list");
-                }
-                throw new Error(`无法加载配置文件: ${res.status}`);
-            }
-            text = await res.text();
+        if (!isKsuEnv()) {
+            throw new Error("未检测到 KernelSU JS API，请在 KernelSU 管理器中打开 WebUI");
         }
+
+        // KernelSU 环境：直接读取 packages.txt
+        const text = await execCommand(`cat "${MODULE_PATH}/packages.txt"`);
 
         const parsed = parsePackagesText(text);
         state.header = parsed.header;
@@ -65,94 +50,98 @@ async function loadPackages() {
     }
 }
 
-// ...existing code...
+function render() {
+    const container = document.getElementById("groups");
+    container.innerHTML = "";
+    state.groups.forEach((group, groupIndex) => {
+        const card = document.createElement("div");
+        card.className = "group-card";
+
+        const title = document.createElement("h2");
+        title.textContent = cleanTitle(group.title);
+        card.appendChild(title);
+
+        if (group.preamble && group.preamble.length) {
+            const pre = document.createElement("pre");
+            pre.textContent = group.preamble.join("\n");
+            card.appendChild(pre);
+        }
+
+        group.items.forEach((item, itemIndex) => {
+            const row = document.createElement("div");
+            row.className = "package-row";
+            
+            // 点击行触发 checkbox
+            row.onclick = (e) => {
+                if (e.target !== checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    // 手动触发 change 事件以更新状态（如果需要）
+                    item.enabled = checkbox.checked;
+                }
+            };
+
+            const checkWrapper = document.createElement("div");
+            checkWrapper.className = "package-checkbox-wrapper";
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = item.enabled; // 注意：这里使用的是 enabled 属性
+            checkbox.onclick = (e) => {
+                 e.stopPropagation(); // 防止触发 row.onclick
+                 item.enabled = checkbox.checked;
+            };
+            checkWrapper.appendChild(checkbox);
+
+            const info = document.createElement("div");
+            info.className = "package-info";
+
+            const name = document.createElement("div");
+            name.className = "package-name";
+            name.textContent = item.package; // 注意：这里使用的是 package 属性
+
+            const desc = document.createElement("div");
+            desc.className = "package-desc";
+            desc.textContent = item.comment || "无描述";
+
+            info.appendChild(name);
+            info.appendChild(desc);
+
+            row.appendChild(checkWrapper);
+            row.appendChild(info);
+            card.appendChild(row);
+        });
+
+        container.appendChild(card);
+    });
+}
+
+function cleanTitle(title) {
+    if (!title) return "未命名分组";
+    return title.replace(/^=+/g, "").replace(/=+$/g, "").trim();
+}
 
 async function savePackages(applyImmediately) {
     setStatus("保存中...");
     try {
-        const payload = buildPackagesText(state);
-        
-        if (isKsuEnv()) {
-            // === KSU 环境保存逻辑 ===
-            console.log("Using KSU API to save packages");
-            
-            // 1. 写入临时文件
-            // 使用 base64 避免特殊字符问题
-            // JS: btoa(unescape(encodeURIComponent(str))) 处理 UTF-8
-            const b64 = btoa(unescape(encodeURIComponent(payload)));
-            const tmpFile = `${MODULE_PATH}/packages.txt.tmp`;
-            const targetFile = `${MODULE_PATH}/packages.txt`;
-            const webrootFile = `${MODULE_PATH}/webroot/packages.txt`;
-            
-            // 组合命令：解码 -> 写入临时 -> 移动 -> 同步到 webroot -> 设置权限
-            const cmd = `echo "${b64}" | base64 -d > "${tmpFile}" && mv -f "${tmpFile}" "${targetFile}" && cp -f "${targetFile}" "${webrootFile}" && chmod 644 "${targetFile}" "${webrootFile}"`;
-            
-            await execCommand(cmd);
-
-            let msg = "保存成功";
-            if (applyImmediately) {
-                const applyScript = `${MODULE_PATH}/apply_now.sh`;
-                // 后台执行 apply，不等待结果
-                await execCommand(`nohup sh "${applyScript}" >/dev/null 2>&1 &`);
-                msg += " (已触发应用)";
-            }
-            setStatus(msg);
-            // 重新加载以确认
-            await loadPackages();
-            
-        } else {
-            // === 浏览器/Magisk 环境保存逻辑 (CGI) ===
-            // ...existing code...
-            const res = await fetch(`/cgi-bin/packages.cgi?apply=${applyImmediately ? 1 : 0}`, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain" },
-                body: payload,
-            });
-            // ...existing code...
-            const status = res.status;
-            const statusText = res.statusText;
-            const serverTag = res.headers.get("x-app-source") || "unknown";
-            const responseText = await res.text();
-            const debugSummary = `HTTP ${status} ${statusText} | source=${serverTag}`;
-            console.debug("savePackages response", debugSummary, responseText.slice(0, 300));
-
-            if (!res.ok) {
-                const preview = responseText.slice(0, 200).replace(/[\r\n]+/g, " ");
-                throw new Error(`请求失败 (${debugSummary}): ${preview || "empty response"}`);
-            }
-
-            // 检查是否返回了脚本源码（CGI 未执行）
-            if (responseText.includes("#!/system/bin/sh") || responseText.includes("CGI endpoint")) {
-                throw new Error(`严重错误: 服务器未执行 CGI 脚本，而是返回了源码。\n请检查模块日志(/data/local/tmp/ace6_debloat.log)中的 WebUI Debug Info。\n(Source=${serverTag})`);
-            }
-
-            let result;
-            try {
-                result = JSON.parse(responseText);
-            } catch (e) {
-                console.warn("JSON parse failed", e);
-                const preview = responseText.slice(0, 200).replace(/[\r\n]+/g, " ");
-                throw new Error(`服务器返回了无效的格式 (${debugSummary}): ${preview}...`);
-            }
-
-            if (result.success === false) {
-                throw new Error("保存失败 (Server returned success: false)");
-            }
-
-            let msg = "保存成功";
-            if (applyImmediately) {
-                if (result.apply === "triggered") {
-                    msg += " (已触发应用)";
-                } else if (result.apply === "script_not_found") {
-                    msg += " (应用脚本未找到)";
-                } else {
-                    msg += ` (状态: ${result.apply})`;
-                }
-            }
-            
-            setStatus(msg);
-            await loadPackages();
+        if (!isKsuEnv()) {
+            throw new Error("未检测到 KernelSU JS API，无法保存配置");
         }
+
+        const payload = buildPackagesText(state);
+        const b64 = btoa(unescape(encodeURIComponent(payload)));
+
+        // 调用预置脚本处理文件写入与权限
+        await execCommand(`sh "${SAVE_SCRIPT}" "${b64}"`);
+
+        let msg = "保存成功";
+        if (applyImmediately) {
+            const applyScript = `${MODULE_PATH}/apply_now.sh`;
+            await execCommand(`nohup sh "${applyScript}" >/dev/null 2>&1 &`);
+            msg += " (已触发应用)";
+        }
+
+        setStatus(msg);
+        await loadPackages();
     } catch (err) {
         console.error(err);
         setStatus("保存失败: " + err.message);
@@ -311,7 +300,18 @@ function buildPackagesText(data) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("save").addEventListener("click", () => savePackages(false));
-    document.getElementById("saveApply").addEventListener("click", () => savePackages(true));
+    const saveBtn = document.getElementById("save");
+    const saveApplyBtn = document.getElementById("saveApply");
+
+    saveBtn.addEventListener("click", () => savePackages(false));
+    saveApplyBtn.addEventListener("click", () => savePackages(true));
+
+    if (!isKsuEnv()) {
+        setStatus("KernelSU JS API 未检测到：请在 KernelSU 管理器中打开 WebUI");
+        saveBtn.disabled = true;
+        saveApplyBtn.disabled = true;
+        return;
+    }
+
     loadPackages();
 });
