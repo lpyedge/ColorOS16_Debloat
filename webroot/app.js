@@ -249,7 +249,8 @@ async function loadPackages() {
     render();
     logStep(`加载完成，分组数: ${state.groups.length}`);
     if (!state.groups.length) {
-        logStep("警告：未解析到任何分组，请检查 packages.txt 标题格式（# === xxx ===）");
+        const sample = text.split("\n").slice(0, 10).join("\\n");
+        logStep(`警告：未解析到任何分组，请检查 packages.txt 标题格式（# === xxx ===）；预览前10行: ${sample}`);
     }
 }
 
@@ -370,8 +371,11 @@ function parsePackagesText(text) {
             return;
         }
 
-        if (/^#\s*===.*===/.test(trimmed) || (/^#/.test(trimmed) && trimmed.includes("==="))) {
-            startGroup(trimmed.replace(/^#\s*/, ""));
+        // 允许前导 BOM、多个 #、以及标题前后有空格
+        const titleMatch = trimmed.match(/^\s*#\s*===.*===\s*$/) || (trimmed.includes("===") && /^#/.test(trimmed));
+        if (titleMatch) {
+            const cleaned = trimmed.replace(/^\s*#\s*/, "").trim();
+            startGroup(cleaned);
             return;
         }
 
