@@ -3,7 +3,7 @@
 # 在系统启动时按列表禁用/启用包
 
 MODDIR="${0%/*}"
-PKGLIST="${MODDIR}/webroot/data/packages.txt}"
+PKGLIST="${MODDIR}/webroot/data/packages.txt"
 LOGFILE="/data/local/tmp/coloros16_debloat.log"
 MAX_BOOT_WAIT=300
 BOOT_WAIT_INTERVAL=5

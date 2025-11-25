@@ -13,20 +13,34 @@ const BRIDGE_WAIT_RETRIES = 40;
 const BRIDGE_WAIT_DELAY = 250;
 let cachedBridge = null;
 
-// apatch 兼容：缺少 ksu 时尝试映射
+// apatch 兼容：缺省映射 ksu
 if (typeof window !== "undefined" && window.apatch && !window.ksu) {
     window.ksu = window.apatch;
 }
 
-function logStep(message) {
-    console.log("[WebUI]", message);
+function setStatus(message, level = "error") {
     const statusEl = document.getElementById("status");
-    if (statusEl) statusEl.textContent = message;
+    if (!statusEl) return;
+    if (!message) {
+        statusEl.textContent = "";
+        statusEl.className = "status";
+        return;
+    }
+    const levelClass = `status-${level}`;
+    statusEl.textContent = message;
+    statusEl.className = `status status-visible ${levelClass}`;
+}
+
+function logStep(message, options = {}) {
+    console.log("[WebUI]", message);
     const debugEl = document.getElementById("debug");
     if (debugEl) {
         const time = new Date().toLocaleTimeString();
         debugEl.textContent += `[${time}] ${message}\n`;
         debugEl.scrollTop = debugEl.scrollHeight;
+    }
+    if (options.statusLevel) {
+        setStatus(message, options.statusLevel);
     }
 }
 
@@ -179,7 +193,7 @@ async function waitForBridge(retries = BRIDGE_WAIT_RETRIES, delay = BRIDGE_WAIT_
 function ensureBridge() {
     const bridge = getBridge();
     if (!bridge) {
-        throw new Error("未检测到 KernelSU 或 WebUI X JS API，请在支持的管理器里打开 WebUI");
+        throw new Error("未检测到 KernelSU / WebUI X JS API");
     }
     return bridge;
 }
@@ -233,64 +247,120 @@ async function fetchPackagesFromWebroot() {
     return await resp.text();
 }
 
-async function loadPackages() {
-    logStep("开始加载包列表...");
-    let text = "";
-    let shellError = null;
+function splitMeta(meta) {
+    const cleaned = (meta || "").replace(/\s+/g, " ").trim();
+    if (!cleaned) return { label: "", description: "" };
+    const firstSpace = cleaned.indexOf(" ");
+    if (firstSpace === -1) return { label: cleaned, description: "" };
+    const label = cleaned.slice(0, firstSpace).trim();
+    const description = cleaned.slice(firstSpace + 1).trim();
+    return { label, description };
+}
 
-    try {
-        // 用 base64 读取，避免桥接输出被截断
-        const b64 = await execCommand(`cat "${PACKAGE_FILE}" | base64 | tr -d '\\n'`);
-        text = decodeBase64Utf8(b64);
-        logStep(`通过 Shell(base64) 读取 packages.txt 成功，长度: ${text.length}`);
-    } catch (err) {
-        shellError = err;
-        logStep(`Shell base64 读取失败，尝试直接 cat: ${err.message}`);
-        try {
-            text = await execCommand(`cat "${PACKAGE_FILE}"`);
-            logStep(`通过 Shell(cat) 读取 packages.txt 成功，长度: ${text.length}`);
-        } catch (errCat) {
-            shellError = errCat;
-            logStep(`Shell cat 读取失败，尝试前端副本: ${errCat.message}`);
-        }
-    }
+function parsePackagesText(text) {
+    const header = [];
+    const groups = [];
+    const lines = text.replace(/\r/g, "").split("\n");
+    let currentGroup = null;
 
-    if (!text || !text.trim()) {
-        try {
-            text = await fetchPackagesFromWebroot();
-        } catch (fallbackErr) {
-            const reason = shellError ? `${shellError.message}; ${fallbackErr.message}` : fallbackErr.message;
-            logStep(`加载失败: ${reason}`);
-            return;
-        }
-    }
-
-    const tryParse = (payload, label) => {
-        const parsed = parsePackagesText(payload);
-        logStep(`${label} 解析完成，分组数: ${parsed.groups.length}，文本长度: ${payload.length}`);
-        return parsed;
+    const startGroup = (title) => {
+        currentGroup = { title, preamble: [], items: [], _hasItems: false };
+        groups.push(currentGroup);
     };
 
-    let parsed = tryParse(text, "Shell 读取");
-    if (!parsed.groups.length) {
-        // 解析失败时强制回退到前端副本再试
-        logStep("未解析到分组，尝试使用前端副本重新解析");
-        try {
-            const fallbackText = await fetchPackagesFromWebroot();
-            parsed = tryParse(fallbackText, "前端副本");
-            text = fallbackText;
-        } catch (fallbackErr) {
-            logStep(`前端副本读取失败: ${fallbackErr.message}`);
-        }
-    }
+    lines.forEach((line, idx) => {
+        const original = line;
+        const trimmed = line.replace(/^\uFEFF/, "").trim();
 
-    state.header = parsed.header;
-    state.groups = parsed.groups;
-    render();
-    if (!state.groups.length) {
-        const sample = text.split("\n").slice(0, 10).join("\\n");
-        logStep(`警告：未解析到任何分组，请检查 packages.txt 标题格式（# === xxx ===）；预览前10行: ${sample}`);
-    }
+        if (!trimmed) {
+            if (!currentGroup) header.push("");
+            else if (!currentGroup._hasItems) currentGroup.preamble.push("");
+            return;
+        }
+
+        const isTitle = /^\s*#\s*===.*===\s*$/.test(trimmed) || (trimmed.includes("===") && /^#+/.test(trimmed));
+        if (isTitle) {
+            const cleaned = trimmed.replace(/^\s*#\s*/, "").trim();
+            startGroup(cleaned);
+            return;
+        }
+
+        if (!currentGroup) {
+            header.push(original);
+            return;
+        }
+
+        let working = trimmed;
+        let enabled = true;
+        if (working.startsWith("#")) {
+            working = working.slice(1).trim();
+            enabled = false;
+        }
+
+        if (!working || working.startsWith("=") || working.indexOf(".") === -1) {
+            currentGroup.preamble.push(original);
+            return;
+        }
+
+        let pkgPart = working;
+        let metaPart = "";
+        const hashPos = working.indexOf("#");
+        if (hashPos !== -1) {
+            pkgPart = working.slice(0, hashPos).trim();
+            metaPart = working.slice(hashPos + 1).trim();
+            if (metaPart.startsWith("#")) metaPart = metaPart.slice(1).trim();
+        }
+
+        if (!pkgPart) {
+            logStep(`警告：第 ${idx + 1} 行未识别包名，已跳过`);
+            return;
+        }
+
+        const { label, description } = splitMeta(metaPart);
+        currentGroup.items.push({ id: pkgPart, label, description, enabled });
+        currentGroup._hasItems = true;
+    });
+
+    groups.forEach((group) => delete group._hasItems);
+    return { header, groups };
+}
+
+function buildPackagesText(data) {
+    const lines = [];
+    const pushLine = (line) => {
+        if (line === undefined || line === null) return;
+        lines.push(line);
+    };
+
+    data.header.forEach((line) => pushLine(line));
+    if (lines.length && lines[lines.length - 1].trim() !== "") lines.push("");
+
+    data.groups.forEach((group, index) => {
+        pushLine(`# ${group.title || "=== 未命名组 ==="}`);
+        (group.preamble || []).forEach((line) => pushLine(line));
+        (group.items || []).forEach((item) => {
+            if (!item.id) return;
+            const parts = [];
+            if (item.label) parts.push(item.label);
+            if (item.description) parts.push(item.description);
+            const meta = parts.join(" ").trim();
+            let line = item.id.trim();
+            if (meta) line += ` # ${meta}`;
+            if (!item.enabled) line = `#${line}`;
+            pushLine(line);
+        });
+        if (index !== data.groups.length - 1 && lines[lines.length - 1] !== "") {
+            lines.push("");
+        }
+    });
+
+    return `${lines.join("\n").replace(/\n+$/g, "")}\n`;
+}
+
+function cleanTitle(title) {
+    if (!title) return "未命名组";
+    const cleaned = title.replace(/^=+/g, "").replace(/=+$/g, "").trim();
+    return cleaned || "未命名组";
 }
 
 function render() {
@@ -331,15 +401,21 @@ function render() {
             const info = document.createElement("div");
             info.className = "package-info";
 
-            const name = document.createElement("div");
-            name.className = "package-name";
-            name.textContent = item.package;
+            const labelEl = document.createElement("div");
+            labelEl.className = "package-label";
+            labelEl.textContent = item.label || item.id;
+            info.appendChild(labelEl);
+
+            if (item.label) {
+                const idEl = document.createElement("div");
+                idEl.className = "package-id";
+                idEl.textContent = item.id;
+                info.appendChild(idEl);
+            }
 
             const desc = document.createElement("div");
             desc.className = "package-desc";
-            desc.textContent = item.comment || "无描述";
-
-            info.appendChild(name);
+            desc.textContent = item.description || "无描述";
             info.appendChild(desc);
 
             row.appendChild(checkWrapper);
@@ -357,140 +433,98 @@ function render() {
     });
 }
 
-function cleanTitle(title) {
-    if (!title) return "未命名分组";
-    return title.replace(/^=+/g, "").replace(/=+$/g, "").trim();
+async function loadPackages() {
+    setStatus("");
+    logStep("开始加载包列表...");
+    let text = "";
+    let shellError = null;
+
+    try {
+        const b64 = await execCommand(`cat "${PACKAGE_FILE}" | base64 | tr -d '\\n'`);
+        text = decodeBase64Utf8(b64);
+        logStep(`通过 Shell(base64) 读取完成，长度: ${text.length}`);
+    } catch (err) {
+        shellError = err;
+        logStep(`Shell base64 读取失败，尝试直接 cat: ${err.message}`);
+        try {
+            text = await execCommand(`cat "${PACKAGE_FILE}"`);
+            logStep(`通过 Shell(cat) 读取完成，长度: ${text.length}`);
+        } catch (errCat) {
+            shellError = errCat;
+            logStep(`Shell cat 读取失败，尝试前端副本: ${errCat.message}`);
+        }
+    }
+
+    if (!text || !text.trim()) {
+        try {
+            text = await fetchPackagesFromWebroot();
+        } catch (fallbackErr) {
+            const reason = shellError ? `${shellError.message}; ${fallbackErr.message}` : fallbackErr.message;
+            setStatus(`包列表加载失败：${reason}`, "error");
+            logStep(`加载失败: ${reason}`, { statusLevel: "error" });
+            return;
+        }
+    }
+
+    const tryParse = (payload, label) => {
+        const parsed = parsePackagesText(payload);
+        logStep(`${label} 解析完成，分组数 ${parsed.groups.length}，文本长度: ${payload.length}`);
+        return parsed;
+    };
+
+    let parsed = tryParse(text, "Shell 读取");
+    if (!parsed.groups.length) {
+        logStep("未解析到任何包，尝试使用前端副本重新解析");
+        try {
+            const fallbackText = await fetchPackagesFromWebroot();
+            parsed = tryParse(fallbackText, "前端副本");
+            text = fallbackText;
+        } catch (fallbackErr) {
+            setStatus(`前端副本读取失败：${fallbackErr.message}`, "error");
+            logStep(`前端副本读取失败: ${fallbackErr.message}`, { statusLevel: "error" });
+        }
+    }
+
+    state.header = parsed.header;
+    state.groups = parsed.groups;
+    render();
+    if (!state.groups.length) {
+        const sample = text.split("\n").slice(0, 5).join("\\n");
+        setStatus("未解析到任何包，请检查 packages.txt 格式", "error");
+        logStep(`警告：未解析到任何包，样本预览: ${sample}`, { statusLevel: "error" });
+    }
 }
 
 async function savePackages(applyImmediately) {
     if (!getBridge()) {
-        logStep("未检测到 KernelSU / WebUI X，无法保存");
+        const msg = "未检测到 KernelSU / WebUI X，无法保存";
+        setStatus(msg, "error");
+        logStep(msg, { statusLevel: "error" });
         return;
     }
+
     logStep(applyImmediately ? "保存并应用..." : "保存中...");
     try {
         const payload = buildPackagesText(state);
         const b64 = btoa(unescape(encodeURIComponent(payload)));
         await execCommand(`sh "${SAVE_SCRIPT}" "${b64}"`);
 
-        let msg = "保存成功";
         if (applyImmediately) {
             const applyOutput = await execCommand(`sh "${APPLY_SCRIPT}" 2>&1`);
-            msg += " (已执行应用)";
             if (applyOutput && applyOutput.trim()) {
                 logStep(`应用输出: ${applyOutput.trim().slice(0, 400)}`);
             }
         }
 
-        logStep(msg);
+        logStep(applyImmediately ? "保存并应用完成" : "保存完成");
+        setStatus("");
         await loadPackages();
     } catch (err) {
         console.error(err);
-        logStep("保存失败: " + err.message);
+        const reason = err?.message || err;
+        setStatus(`保存失败：${reason}`, "error");
+        logStep("保存失败: " + reason, { statusLevel: "error" });
     }
-}
-
-function parsePackagesText(text) {
-    const header = [];
-    const groups = [];
-    const lines = text.replace(/\r/g, "").split("\n");
-    let currentGroup = null;
-
-    const startGroup = (title) => {
-        currentGroup = { title, preamble: [], items: [], _hasItems: false };
-        groups.push(currentGroup);
-    };
-
-    const pushHeader = (line) => header.push(line);
-
-    lines.forEach((line, idx) => {
-        const original = line;
-        const trimmed = line.replace(/^\uFEFF/, "").trim();
-
-        if (!trimmed) {
-            if (!currentGroup) pushHeader("");
-            else if (!currentGroup._hasItems) currentGroup.preamble.push("");
-            return;
-        }
-
-        // 允许前导 BOM、多个 #、以及标题前后有空格
-        const titleMatch = trimmed.match(/^\s*#\s*===.*===\s*$/) || (trimmed.includes("===") && /^#+/.test(trimmed));
-        if (titleMatch) {
-            const cleaned = trimmed.replace(/^\s*#\s*/, "").trim();
-            startGroup(cleaned);
-            return;
-        }
-
-        if (!currentGroup) {
-            pushHeader(original);
-            return;
-        }
-
-        let working = trimmed;
-        let enabled = true;
-        if (working.startsWith("#")) {
-            working = working.slice(1).trim();
-            enabled = false;
-        }
-
-        if (working.indexOf(".") === -1 || working.startsWith("=")) {
-            currentGroup.preamble.push(original);
-            return;
-        }
-
-        let comment = "";
-        let pkgPart = working;
-        const commentIndex = working.indexOf(" # ");
-        if (commentIndex !== -1) {
-            comment = working.slice(commentIndex + 3).trim();
-            pkgPart = working.slice(0, commentIndex).trim();
-        } else {
-            const looseIndex = working.indexOf(" #");
-            if (looseIndex !== -1) {
-                comment = working.slice(looseIndex + 2).trim();
-                pkgPart = working.slice(0, looseIndex).trim();
-            }
-        }
-
-        if (!pkgPart) {
-            logStep(`警告：第 ${idx + 1} 行解析为空，已跳过`);
-            return;
-        }
-
-        currentGroup.items.push({ package: pkgPart, comment, enabled });
-        currentGroup._hasItems = true;
-    });
-
-    groups.forEach((group) => delete group._hasItems);
-    return { header, groups };
-}
-
-function buildPackagesText(data) {
-    const lines = [];
-    const pushLine = (line) => {
-        if (line === undefined || line === null) return;
-        lines.push(line);
-    };
-
-    data.header.forEach((line) => pushLine(line));
-    if (lines.length && lines[lines.length - 1].trim() !== "") lines.push("");
-
-    data.groups.forEach((group, index) => {
-        pushLine(`# ${group.title || "=== 未分组 ==="}`);
-        (group.preamble || []).forEach((line) => pushLine(line));
-        (group.items || []).forEach((item) => {
-            if (!item.package) return;
-            let line = item.package.trim();
-            if (item.comment) line += ` # ${item.comment.trim()}`;
-            if (!item.enabled) line = `#${line}`;
-            pushLine(line);
-        });
-        if (index !== data.groups.length - 1 && lines[lines.length - 1] !== "") {
-            lines.push("");
-        }
-    });
-
-    return `${lines.join("\n").replace(/\n+$/g, "")}\n`;
 }
 
 function initUI() {
@@ -499,10 +533,10 @@ function initUI() {
     const debugEl = document.getElementById("debug");
     const debugPanel = document.getElementById("debug-panel");
 
-    saveBtn.addEventListener("click", () => savePackages(false));
-    saveApplyBtn.addEventListener("click", () => savePackages(true));
-    saveBtn.disabled = true;
-    saveApplyBtn.disabled = true;
+    if (saveBtn) saveBtn.addEventListener("click", () => savePackages(false));
+    if (saveApplyBtn) saveApplyBtn.addEventListener("click", () => savePackages(true));
+    if (saveBtn) saveBtn.disabled = true;
+    if (saveApplyBtn) saveApplyBtn.disabled = true;
 
     applySafeAreaInsets();
     if (window.visualViewport) {
@@ -522,9 +556,9 @@ function initUI() {
             try {
                 await navigator.clipboard.writeText(debugEl.textContent || "");
                 if (cachedBridge && cachedBridge.toast) {
-                    cachedBridge.toast("复制调试日志成功");
+                    cachedBridge.toast("调试日志已复制");
                 } else {
-                    logStep("复制调试日志成功");
+                    logStep("调试日志已复制");
                 }
             } catch (err) {
                 logStep("复制调试日志失败: " + (err?.message || err));
@@ -535,7 +569,7 @@ function initUI() {
             e.preventDefault();
             copyDebug();
         });
-        debugEl.addEventListener("pointerdown", (e) => {
+        debugEl.addEventListener("pointerdown", () => {
             let timer = setTimeout(copyDebug, 600);
             const clear = () => {
                 clearTimeout(timer);
@@ -556,17 +590,17 @@ async function bootstrap() {
 
     const bridge = await waitForBridge();
     if (!bridge) {
-        logStep("未检测到 KernelSU / WebUI X JS API，列表可浏览但无法保存");
+        setStatus("未检测到 KernelSU / WebUI X，包列表仅可浏览", "warning");
+        logStep("未检测到 KernelSU / WebUI X JS API，包列表仅可浏览", { statusLevel: "warning" });
         return;
     }
 
     logStep(`检测到桥接: ${bridge.name}`);
     const saveBtn = document.getElementById("save");
     const saveApplyBtn = document.getElementById("saveApply");
-    saveBtn.disabled = false;
-    saveApplyBtn.disabled = false;
+    if (saveBtn) saveBtn.disabled = false;
+    if (saveApplyBtn) saveApplyBtn.disabled = false;
 
-    // 桥接就绪后再读一次，确保实时文件
     await loadPackages();
 }
 

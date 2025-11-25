@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     --safe-area-top: env(safe-area-inset-top, 0px);
     --safe-area-bottom: env(safe-area-inset-bottom, 0px);
     --window-inset-top: var(--safe-area-top, 0px);
@@ -15,18 +15,18 @@ body {
 }
 
 .root-layout {
-    padding-top: var(--window-inset-top);
+    padding-top: 0;
     padding-bottom: var(--window-inset-bottom);
+    min-height: 100vh;
 }
 
 header {
     background: #fff;
     color: #000;
     padding: 1.25rem;
-    padding-top: calc(1.25rem + var(--window-inset-top, 0px));
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     position: sticky;
-    top: var(--window-inset-top, 0px);
+    top: 0;
     z-index: 100;
 }
 
@@ -35,6 +35,7 @@ header {
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
+    flex-wrap: wrap;
 }
 
 .header-title h1 {
@@ -67,7 +68,12 @@ button {
 }
 
 button:active {
-    opacity: 0.8;
+    opacity: 0.85;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 #save {
@@ -80,12 +86,34 @@ button:active {
     color: #fff;
 }
 
-"#status {
-    font-size: 0.75rem;
-    color: #65676b;
-    text-align: center;
-    margin-top: 0.35rem;
-    min-height: 1em;
+.status {
+    display: none;
+    padding: 0.65rem 0.9rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    border: 1px solid transparent;
+}
+
+.status-visible {
+    display: block;
+}
+
+.status-error {
+    background: #ffecec;
+    border-color: #ffcdcd;
+    color: #a40000;
+}
+
+.status-warning {
+    background: #fff7e6;
+    border-color: #ffe1b3;
+    color: #8a4b00;
+}
+
+.status-info {
+    background: #e8f3ff;
+    border-color: #c4ddff;
+    color: #0c4da2;
 }
 
 #debug-panel {
@@ -129,13 +157,9 @@ button:active {
 main {
     padding: 1rem;
     padding-bottom: 1rem;
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
 }
-
-/* Removed #controls styles as it is removed from HTML */
-
-"
 
 .group-card {
     background: #fff;
@@ -200,22 +224,27 @@ input[type="checkbox"] {
     min-width: 0;
 }
 
-.package-name {
-    font-family: monospace;
+.package-label {
     font-size: 1rem;
     font-weight: 600;
-    color: #1a1a1a;
+    color: #0f1115;
+    margin-bottom: 0.1rem;
+}
+
+.package-id {
+    font-family: monospace;
+    font-size: 0.86rem;
+    color: #424242;
     margin-bottom: 0.25rem;
     word-break: break-all;
 }
 
 .package-desc {
-    font-size: 0.8rem;
-    color: #808080;
-    line-height: 1.4;
+    font-size: 0.82rem;
+    color: #6f6f6f;
+    line-height: 1.45;
 }
 
 pre {
     margin: 0;
 }
-
