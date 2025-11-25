@@ -88,6 +88,19 @@ button:active {
     min-height: 1em;
 }
 
+#debug {
+    font-size: 0.7rem;
+    color: #888;
+    background: #f7f8fa;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 0.5rem;
+    max-height: 120px;
+    overflow: auto;
+    margin-top: 0.5rem;
+    white-space: pre-wrap;
+}
+
 main {
     padding: 1rem;
     padding-bottom: 1rem;
