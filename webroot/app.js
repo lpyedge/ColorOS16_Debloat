@@ -21,9 +21,7 @@ if (typeof window !== "undefined" && window.apatch && !window.ksu) {
 function logStep(message) {
     console.log("[WebUI]", message);
     const statusEl = document.getElementById("status");
-    if (statusEl) {
-        statusEl.textContent = message;
-    }
+    if (statusEl) statusEl.textContent = message;
     const debugEl = document.getElementById("debug");
     if (debugEl) {
         const time = new Date().toLocaleTimeString();
@@ -42,15 +40,10 @@ function normalizeExecResult(result) {
         return "";
     };
 
-    if (typeof result === "number") {
-        return { stdout: "", stderr: "", errno: result };
-    }
-    if (typeof result === "string") {
-        return { stdout: result, stderr: "", errno: 0 };
-    }
-    if (!result || typeof result !== "object") {
-        return { stdout: "", stderr: "", errno: 0 };
-    }
+    if (typeof result === "number") return { stdout: "", stderr: "", errno: result };
+    if (typeof result === "string") return { stdout: result, stderr: "", errno: 0 };
+    if (!result || typeof result !== "object") return { stdout: "", stderr: "", errno: 0 };
+
     const codeKeys = ["errno", "code", "exitCode", "status"];
     let errno = 0;
     for (const key of codeKeys) {
@@ -59,13 +52,10 @@ function normalizeExecResult(result) {
             break;
         }
     }
-    if (!errno && result.success === false) {
-        errno = 1;
-    }
+    if (!errno && result.success === false) errno = 1;
 
     const stdout = pickFirstString(result, ["stdout", "out", "output", "data", "result"]);
     const stderr = pickFirstString(result, ["stderr", "err", "error", "message"]);
-
     return { stdout, stderr, errno };
 }
 
@@ -73,12 +63,8 @@ async function callExecWithFallback(execFn, command) {
     let lastError = null;
     try {
         const direct = execFn(command);
-        if (direct && typeof direct.then === "function") {
-            return await direct;
-        }
-        if (direct !== undefined) {
-            return direct;
-        }
+        if (direct && typeof direct.then === "function") return await direct;
+        if (direct !== undefined) return direct;
     } catch (err) {
         lastError = err;
     }
@@ -214,10 +200,7 @@ function getSafeAreaInsets() {
     const computed = getComputedStyle(document.documentElement);
     const cssTop = parseFloat(computed.getPropertyValue("--safe-area-top")) || 0;
     const cssBottom = parseFloat(computed.getPropertyValue("--safe-area-bottom")) || 0;
-    return {
-        top: Math.max(top, cssTop, 0),
-        bottom: Math.max(bottom, cssBottom, 0),
-    };
+    return { top: Math.max(top, cssTop, 0), bottom: Math.max(bottom, cssBottom, 0) };
 }
 
 function applySafeAreaInsets() {
@@ -265,6 +248,9 @@ async function loadPackages() {
     state.groups = parsed.groups;
     render();
     logStep(`加载完成，分组数: ${state.groups.length}`);
+    if (!state.groups.length) {
+        logStep("警告：未解析到任何分组，请检查 packages.txt 标题格式（# === xxx ===）");
+    }
 }
 
 function render() {
@@ -374,21 +360,23 @@ function parsePackagesText(text) {
 
     const pushHeader = (line) => header.push(line);
 
-    lines.forEach((line) => {
-        const trimmed = line.trim();
+    lines.forEach((line, idx) => {
+        const original = line;
+        const trimmed = line.replace(/^\uFEFF/, "").trim();
+
         if (!trimmed) {
             if (!currentGroup) pushHeader("");
             else if (!currentGroup._hasItems) currentGroup.preamble.push("");
             return;
         }
 
-        if (/^#\s*===.*===/.test(trimmed)) {
+        if (/^#\s*===.*===/.test(trimmed) || (/^#/.test(trimmed) && trimmed.includes("==="))) {
             startGroup(trimmed.replace(/^#\s*/, ""));
             return;
         }
 
         if (!currentGroup) {
-            pushHeader(line);
+            pushHeader(original);
             return;
         }
 
@@ -400,7 +388,7 @@ function parsePackagesText(text) {
         }
 
         if (working.indexOf(".") === -1 || working.startsWith("=")) {
-            currentGroup.preamble.push(line);
+            currentGroup.preamble.push(original);
             return;
         }
 
@@ -416,6 +404,11 @@ function parsePackagesText(text) {
                 comment = working.slice(looseIndex + 2).trim();
                 pkgPart = working.slice(0, looseIndex).trim();
             }
+        }
+
+        if (!pkgPart) {
+            logStep(`警告：第 ${idx + 1} 行解析为空，已跳过`);
+            return;
         }
 
         currentGroup.items.push({ package: pkgPart, comment, enabled });
