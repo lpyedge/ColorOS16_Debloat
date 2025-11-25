@@ -13,13 +13,22 @@ const BRIDGE_WAIT_DELAY = 250;
 let cachedBridge = null;
 
 function normalizeExecResult(result) {
+    const pickFirstString = (obj, keys) => {
+        for (const key of keys) {
+            const value = obj[key];
+            if (typeof value === "string") return value;
+            if (Array.isArray(value)) return value.join("\n");
+        }
+        return "";
+    };
+
     if (typeof result === "string") {
         return { stdout: result, stderr: "", errno: 0 };
     }
     if (!result || typeof result !== "object") {
         return { stdout: "", stderr: "", errno: 0 };
     }
-    const codeKeys = ["errno", "code", "exitCode"];
+    const codeKeys = ["errno", "code", "exitCode", "status"];
     let errno = 0;
     for (const key of codeKeys) {
         if (typeof result[key] === "number") {
@@ -27,9 +36,16 @@ function normalizeExecResult(result) {
             break;
         }
     }
+    if (!errno && result.success === false) {
+        errno = 1;
+    }
+
+    const stdout = pickFirstString(result, ["stdout", "out", "output", "data", "result"]);
+    const stderr = pickFirstString(result, ["stderr", "err", "error", "message"]);
+
     return {
-        stdout: typeof result.stdout === "string" ? result.stdout : "",
-        stderr: typeof result.stderr === "string" ? result.stderr : "",
+        stdout,
+        stderr,
         errno,
     };
 }
@@ -138,21 +154,64 @@ async function execCommand(cmd) {
     return normalized.stdout;
 }
 
+function getSafeAreaInsets() {
+    const vv = window.visualViewport;
+    const top = vv ? vv.offsetTop : 0;
+    const bottom = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+
+    const computed = getComputedStyle(document.documentElement);
+    const cssTop = parseFloat(computed.getPropertyValue("--safe-area-top")) || 0;
+    const cssBottom = parseFloat(computed.getPropertyValue("--safe-area-bottom")) || 0;
+
+    return {
+        top: Math.max(top, cssTop, 0),
+        bottom: Math.max(bottom, cssBottom, 0),
+    };
+}
+
+function applySafeAreaInsets() {
+    const insets = getSafeAreaInsets();
+    document.documentElement.style.setProperty("--safe-area-top", `${insets.top}px`);
+    document.documentElement.style.setProperty("--safe-area-bottom", `${insets.bottom}px`);
+}
+
+async function fetchPackagesFromWebroot() {
+    const resp = await fetch("data/packages.txt", { cache: "no-store" });
+    if (!resp.ok) {
+        throw new Error(`获取 packages.txt 失败 (HTTP ${resp.status})`);
+    }
+    return await resp.text();
+}
+
 async function loadPackages() {
     setStatus("加载中...");
+    let text = "";
+    let shellError = null;
+
     try {
         // KernelSU 环境：直接读取 packages.txt（已迁移到 webroot/data）
-        const text = await execCommand(`cat "${MODULE_PATH}/webroot/data/packages.txt"`);
-
-        const parsed = parsePackagesText(text);
-        state.header = parsed.header;
-        state.groups = parsed.groups;
-        render();
-        setStatus("已加载");
+        text = await execCommand(`cat "${MODULE_PATH}/webroot/data/packages.txt"`);
     } catch (err) {
-        console.error(err);
-        setStatus("加载失败: " + err.message);
+        console.warn("读取 packages.txt 失败，改用前端副本:", err);
+        shellError = err;
     }
+
+    if (!text || !text.trim()) {
+        try {
+            text = await fetchPackagesFromWebroot();
+        } catch (fallbackErr) {
+            console.error(fallbackErr);
+            const reason = shellError ? `${shellError.message}; ${fallbackErr.message}` : fallbackErr.message;
+            setStatus("加载失败: " + reason);
+            return;
+        }
+    }
+
+    const parsed = parsePackagesText(text);
+    state.header = parsed.header;
+    state.groups = parsed.groups;
+    render();
+    setStatus("已加载");
 }
 
 function render() {
@@ -409,14 +468,22 @@ window.addEventListener("DOMContentLoaded", () => {
     saveBtn.disabled = true;
     saveApplyBtn.disabled = true;
 
-    waitForBridge().then((bridge) => {
+    applySafeAreaInsets();
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", applySafeAreaInsets);
+        window.visualViewport.addEventListener("scroll", applySafeAreaInsets);
+    }
+    window.addEventListener("resize", applySafeAreaInsets);
+
+    loadPackages();
+
+    waitForBridge(40, BRIDGE_WAIT_DELAY).then((bridge) => {
         if (!bridge) {
-            setStatus("未检测到 KernelSU / WebUI X JS API，请从支持的宿主应用打开");
+            setStatus("未检测到 KernelSU / WebUI X JS API，列表可浏览但无法保存");
             return;
         }
 
         saveBtn.disabled = false;
         saveApplyBtn.disabled = false;
-        loadPackages();
     });
 });
