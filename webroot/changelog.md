@@ -1,2 +1,2 @@
-feat: 增强 exec 函数的兼容性，调整安全区域处理逻辑；更新 HTML 结构以优化布局
+feat: 更新 README 和 customize.sh，調整模組描述與功能說明；刪除過時的 packages.txt 文件
 
