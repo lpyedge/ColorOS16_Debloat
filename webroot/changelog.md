@@ -1,2 +1,2 @@
-feat: WebUI 迁移到 KernelSU JS API，移除 busybox/httpd/CGI，新增 save_packages.sh 脚本以处理配置写入
+feat: 更新 service.sh 和 app.js 以支持 KSU 环境，优化包管理逻辑，调整 httpd.conf 配置
 
