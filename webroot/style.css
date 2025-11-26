@@ -64,12 +64,23 @@ button {
     cursor: pointer;
     font-size: 0.9rem;
     font-weight: 500;
-    transition: opacity 0.2s;
+    transition: opacity 0.15s, transform 0.08s, box-shadow 0.12s;
     white-space: nowrap;
 }
 
+/* stronger press effect for primary buttons */
 button:active {
-    opacity: 0.85;
+    opacity: 0.95;
+    transform: translateY(1px) scale(0.995);
+}
+
+/* additional visual effect for the save/apply buttons */
+#save, #saveApply {
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+}
+
+#save:active, #saveApply:active {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08) inset;
 }
 
 button:disabled {
@@ -154,6 +165,29 @@ button:disabled {
     white-space: pre-wrap;
     border: none;
 }
+
+/* copy debug button */
+.debug-copy-btn {
+    margin-left: 0.5rem;
+    background: transparent;
+    color: #1877f2;
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+.header-extras .debug-copy-btn {
+    position: absolute;
+    right: 0.8rem;
+    top: 0.28rem;
+}
+    font-size: 0.78rem;
+    border: 1px solid transparent;
+    display: none; /* shown when details open via JS */
+}
+.debug-copy-btn:active {
+    transform: translateY(1px) scale(0.995);
+}
+
+/* small toast fallback (when bridge.toast not available) */
+
 
 main {
     padding: 1rem;

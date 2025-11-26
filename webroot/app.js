@@ -31,6 +31,27 @@ function setStatus(message, level = "error") {
     statusEl.className = `status status-visible ${levelClass}`;
 }
 
+function showToast(message) {
+    const bridge = getBridge();
+    if (bridge && typeof bridge.toast === "function") {
+        try {
+            bridge.toast(message);
+            return;
+        } catch (e) {
+            // 如果 bridge.toast 拋錯，退回到 console.log
+            console.log("bridge.toast failed:", e);
+        }
+    }
+
+    // 若 bridge.toast 不存在或拋錯，使用 alert 作為簡單且明確的回退方案
+    try {
+        alert(message);
+    } catch (e) {
+        // 若 alert 也不可用（極少見），退回到 console.log
+        console.log("[Toast-fallback] " + message);
+    }
+}
+
 function logStep(message, options = {}) {
     console.log("[WebUI]", message);
     const debugEl = document.getElementById("debug");
@@ -509,22 +530,94 @@ async function savePackages(applyImmediately) {
         const b64 = btoa(unescape(encodeURIComponent(payload)));
         await execCommand(`sh "${SAVE_SCRIPT}" "${b64}"`);
 
+        // 统计将要禁用/解除的项（基于当前 UI 状态）
+        let willDisable = 0;
+        let willEnable = 0;
+        (state.groups || []).forEach((g) => {
+            (g.items || []).forEach((it) => {
+                if (!it || !it.id) return;
+                if (it.enabled) willDisable++; else willEnable++;
+            });
+        });
+
         if (applyImmediately) {
-            const applyOutput = await execCommand(`sh "${APPLY_SCRIPT}" 2>&1`);
-            if (applyOutput && applyOutput.trim()) {
-                logStep(`应用输出: ${applyOutput.trim().slice(0, 400)}`);
+            let applyOutput = "";
+            try {
+                applyOutput = await execCommand(`sh "${APPLY_SCRIPT}" 2>&1`);
+                if (applyOutput && applyOutput.trim()) {
+                    logStep(`应用输出: ${applyOutput.trim().slice(0, 400)}`);
+                }
+            } catch (err) {
+                const reason = err?.message || err;
+                showToast("保存或应用失败：" + reason);
+                setStatus(`保存或应用失败：${reason}`, "error");
+                logStep("保存或应用失败: " + reason, { statusLevel: "error" });
+                return;
             }
+
+            // 尝试解析 service.sh 的统计输出
+            const parsed = parseServiceSummary(applyOutput || "");
+            let message = "保存并应用成功。";
+            if (parsed) {
+                message += `屏蔽 ${parsed.disable.ok} 个组件，解除 ${parsed.enable.ok} 个组件。`;
+                const failParts = [];
+                if (parsed.disable.failed) failParts.push(`屏蔽失败 ${parsed.disable.failed}`);
+                if (parsed.enable.failed) failParts.push(`解除失败 ${parsed.enable.failed}`);
+                if (failParts.length) message += " 部分操作失败：" + failParts.join("，") + "。";
+            } else {
+                message += `将屏蔽 ${willDisable} 个组件，解除 ${willEnable} 个组件。`;
+            }
+            showToast(message);
+            logStep(message);
+        } else {
+            const message = `保存成功。将屏蔽 ${willDisable} 个组件，解除 ${willEnable} 个组件（应用后生效）。`;
+            showToast(message);
+            logStep(message);
         }
 
-        logStep(applyImmediately ? "保存并应用完成" : "保存完成");
         setStatus("");
         await loadPackages();
     } catch (err) {
         console.error(err);
         const reason = err?.message || err;
+        showToast(`保存失败：${reason}`);
         setStatus(`保存失败：${reason}`, "error");
         logStep("保存失败: " + reason, { statusLevel: "error" });
     }
+}
+
+function parseServiceSummary(output) {
+    if (!output) return null;
+    try {
+        const res = {
+            disable: { total: 0, ok: 0, skipped: 0, failed: 0 },
+            enable: { total: 0, ok: 0, skipped: 0, failed: 0 },
+        };
+
+        const disableRe = /Disable\s*-\s*total:\s*(\d+)[\s\S]*?ok:\s*(\d+)[\s\S]*?skipped[^:]*:\s*(\d+)[\s\S]*?failed:\s*(\d+)/i;
+        const enableRe = /Enable\s*-\s*total:\s*(\d+)[\s\S]*?ok:\s*(\d+)[\s\S]*?skipped[^:]*:\s*(\d+)[\s\S]*?failed:\s*(\d+)/i;
+
+        const d = output.match(disableRe);
+        if (d) {
+            res.disable.total = parseInt(d[1], 10);
+            res.disable.ok = parseInt(d[2], 10);
+            res.disable.skipped = parseInt(d[3], 10);
+            res.disable.failed = parseInt(d[4], 10);
+        }
+        const e = output.match(enableRe);
+        if (e) {
+            res.enable.total = parseInt(e[1], 10);
+            res.enable.ok = parseInt(e[2], 10);
+            res.enable.skipped = parseInt(e[3], 10);
+            res.enable.failed = parseInt(e[4], 10);
+        }
+
+        // only return if we successfully parsed at least one value
+        if ((res.disable.total || res.disable.ok || res.disable.failed) || (res.enable.total || res.enable.ok || res.enable.failed)) return res;
+    } catch (err) {
+        // ignore parse errors
+    }
+    return null;
 }
 
 function initUI() {
@@ -551,36 +644,35 @@ function initUI() {
                 debugEl.scrollTop = debugEl.scrollHeight;
             }
         });
-
-        const copyDebug = async () => {
-            try {
-                await navigator.clipboard.writeText(debugEl.textContent || "");
-                if (cachedBridge && cachedBridge.toast) {
-                    cachedBridge.toast("调试日志已复制");
+        // Add a dedicated copy button (right-side). Long-press/右鍵复制 已取消。
+        const copyBtn = document.getElementById("copyDebug");
+        if (copyBtn) {
+            // hide by default (unless details already open)
+            copyBtn.style.display = debugPanel.open ? "inline-block" : "none";
+            if (debugPanel.open) copyBtn.setAttribute("aria-hidden", "false");
+            debugPanel.addEventListener("toggle", () => {
+                if (debugPanel.open) {
+                    copyBtn.style.display = "inline-block";
+                    copyBtn.setAttribute("aria-hidden", "false");
                 } else {
-                    logStep("调试日志已复制");
+                    copyBtn.style.display = "none";
+                    copyBtn.setAttribute("aria-hidden", "true");
                 }
-            } catch (err) {
-                logStep("复制调试日志失败: " + (err?.message || err));
-            }
-        };
+            });
 
-        debugEl.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            copyDebug();
-        });
-        debugEl.addEventListener("pointerdown", () => {
-            let timer = setTimeout(copyDebug, 600);
-            const clear = () => {
-                clearTimeout(timer);
-                debugEl.removeEventListener("pointerup", clear);
-                debugEl.removeEventListener("pointercancel", clear);
-                debugEl.removeEventListener("pointerleave", clear);
-            };
-            debugEl.addEventListener("pointerup", clear);
-            debugEl.addEventListener("pointercancel", clear);
-            debugEl.addEventListener("pointerleave", clear);
-        });
+            copyBtn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                try {
+                    await navigator.clipboard.writeText(debugEl.textContent || "");
+                    showToast("调试信息已复制");
+                    logStep("调试信息已复制");
+                } catch (err) {
+                    const reason = err?.message || err;
+                    showToast("复制调试信息失败: " + reason);
+                    logStep("复制调试信息失败: " + reason, { statusLevel: "error" });
+                }
+            });
+        }
     }
 }
 
