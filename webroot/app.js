@@ -508,6 +508,13 @@ async function loadPackages() {
 
     state.header = parsed.header;
     state.groups = parsed.groups;
+    // snapshot 当前载入时的启用状态，用于保存时计算“变动”数量
+    state._snapshot = {};
+    (state.groups || []).forEach((g) => {
+        (g.items || []).forEach((it) => {
+            if (it && it.id) state._snapshot[it.id] = !!it.enabled;
+        });
+    });
     render();
     if (!state.groups.length) {
         const sample = text.split("\n").slice(0, 5).join("\\n");
@@ -530,13 +537,17 @@ async function savePackages(applyImmediately) {
         const b64 = btoa(unescape(encodeURIComponent(payload)));
         await execCommand(`sh "${SAVE_SCRIPT}" "${b64}"`);
 
-        // 统计将要禁用/解除的项（基于当前 UI 状态）
-        let willDisable = 0;
-        let willEnable = 0;
+        // 计算“变动”数量（与加载时 snapshot 对比）
+        let newDisable = 0; // 原本未屏蔽，现在勾选 -> 新屏蔽
+        let newEnable = 0;  // 原本屏蔽，现在取消勾选 -> 新解除屏蔽
         (state.groups || []).forEach((g) => {
             (g.items || []).forEach((it) => {
                 if (!it || !it.id) return;
-                if (it.enabled) willDisable++; else willEnable++;
+                const prev = state._snapshot && Object.prototype.hasOwnProperty.call(state._snapshot, it.id) ? !!state._snapshot[it.id] : null;
+                const curr = !!it.enabled;
+                if (prev === null) return; // 无法判断的（新行）跳过
+                if (!prev && curr) newDisable++;
+                if (prev && !curr) newEnable++;
             });
         });
 
@@ -557,20 +568,19 @@ async function savePackages(applyImmediately) {
 
             // 尝试解析 service.sh 的统计输出
             const parsed = parseServiceSummary(applyOutput || "");
-            let message = "保存并应用成功。";
+            // 优先根据变动数量显示简洁的变动信息
+            let message = `保存并应用成功。新屏蔽 ${newDisable} 个组件，新解除 ${newEnable} 个组件。`;
+            // 若解析到 service 输出并发现失败数，可追加说明
             if (parsed) {
-                message += `屏蔽 ${parsed.disable.ok} 个组件，解除 ${parsed.enable.ok} 个组件。`;
                 const failParts = [];
-                if (parsed.disable.failed) failParts.push(`屏蔽失败 ${parsed.disable.failed}`);
-                if (parsed.enable.failed) failParts.push(`解除失败 ${parsed.enable.failed}`);
-                if (failParts.length) message += " 部分操作失败：" + failParts.join("，") + "。";
-            } else {
-                message += `将屏蔽 ${willDisable} 个组件，解除 ${willEnable} 个组件。`;
+                if (parsed.disable && parsed.disable.failed) failParts.push(`屏蔽失败 ${parsed.disable.failed} 个`);
+                if (parsed.enable && parsed.enable.failed) failParts.push(`解除失败 ${parsed.enable.failed} 个`);
+                if (failParts.length) message += " 但部分操作失败：" + failParts.join("，") + "。";
             }
             showToast(message);
             logStep(message);
         } else {
-            const message = `保存成功。将屏蔽 ${willDisable} 个组件，解除 ${willEnable} 个组件（应用后生效）。`;
+            const message = `保存成功。新屏蔽 ${newDisable} 个组件，新解除 ${newEnable} 个组件（应用后生效）。`;
             showToast(message);
             logStep(message);
         }
@@ -644,7 +654,6 @@ function initUI() {
                 debugEl.scrollTop = debugEl.scrollHeight;
             }
         });
-        // Add a dedicated copy button (right-side). Long-press/右鍵复制 已取消。
         const copyBtn = document.getElementById("copyDebug");
         if (copyBtn) {
             // hide by default (unless details already open)
@@ -664,12 +673,12 @@ function initUI() {
                 e.stopPropagation();
                 try {
                     await navigator.clipboard.writeText(debugEl.textContent || "");
-                    showToast("调试信息已复制");
-                    logStep("调试信息已复制");
+                    showToast("调试日志已复制");
+                    logStep("调试日志已复制");
                 } catch (err) {
                     const reason = err?.message || err;
-                    showToast("复制调试信息失败: " + reason);
-                    logStep("复制调试信息失败: " + reason, { statusLevel: "error" });
+                    showToast("复制调试日志失败: " + reason);
+                    logStep("复制调试日志失败: " + reason, { statusLevel: "error" });
                 }
             });
         }

@@ -167,26 +167,26 @@ button:disabled {
 }
 
 /* copy debug button */
+.header-extras {
+    margin-top: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .debug-copy-btn {
-    margin-left: 0.5rem;
     background: transparent;
     color: #1877f2;
     border-radius: 6px;
     padding: 0.25rem 0.5rem;
-.header-extras .debug-copy-btn {
-    position: absolute;
-    right: 0.8rem;
-    top: 0.28rem;
-}
     font-size: 0.78rem;
     border: 1px solid transparent;
     display: none; /* shown when details open via JS */
+    margin-left: auto; /* push to the right */
 }
 .debug-copy-btn:active {
     transform: translateY(1px) scale(0.995);
 }
-
-/* small toast fallback (when bridge.toast not available) */
 
 
 main {
