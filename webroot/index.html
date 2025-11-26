@@ -22,10 +22,12 @@
             </div>
             <div class="header-extras">
                 <details id="debug-panel">
-                    <summary>调试日志</summary>
+                    <summary class="debug-summary">
+                        <span class="debug-summary-text">调试日志</span>
+                        <button id="copyDebug" class="debug-copy-btn" aria-hidden="true">点击复制日志</button>
+                    </summary>
                     <pre id="debug"></pre>
                 </details>
-                <button id="copyDebug" class="debug-copy-btn" aria-hidden="true">点击复制日志</button>
             </div>
         </header>
         <main>

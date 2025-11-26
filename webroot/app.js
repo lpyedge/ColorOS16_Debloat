@@ -671,6 +671,7 @@ function initUI() {
 
             copyBtn.addEventListener("click", async (e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 try {
                     await navigator.clipboard.writeText(debugEl.textContent || "");
                     showToast("调试日志已复制");
