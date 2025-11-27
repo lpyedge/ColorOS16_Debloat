@@ -4,7 +4,7 @@
 # === 1. 系统广告与内容推广（广告推送） ===
 com.opos.ads # 智能推荐服务 系统广告核心服务,禁用后绝大多数系统广告位不再加载
 com.android.adservices.api # 广告隐私权 安卓系统广告服务API
-
+com.google.android.ondevicepersonalization.services # （ODP）裝置端個人化 Google的推薦/廣告或裝置端統計
 
 # === 2. 厂商账号与云控通道（云控监控） ===
 # 注意: 这组会影响 ColorOS OTA 更新
@@ -14,6 +14,7 @@ com.heytap.mcs # 系统消息 消息推送通道, 禁用后官方推送/游戏�
 com.heytap.cloud # 云服务 禁用后云备份/云短信不可用
 com.heytap.mydevices # 设备空间 设备互通, 禁用后与耳机/手表的云服务关联会受限
 com.heytap.opluscarlink # 车联服务 禁用后 ColorOS 车载互联功能不可用
+com.google.android.projection.gearhead # Android_Auto 安卓系统智驾服务
 com.heytap.usercenter # 会员中心壳体 禁用后会员入口与成长值显示隐藏
 com.heytap.openid # OpenID 快速登录授权, 禁用后第三方使用 HeyTap 登录会失败
 com.oplus.obrain # OBrain 云控策略中心, 禁用可杜绝云控推送
@@ -37,6 +38,15 @@ com.ted.number # 智能识别陌生号码
 com.oplus.logkit # 反馈工具箱
 com.oplus.dmp # 融合搜索服务
 com.oplus.cosa # 应用增强服务 安装App后联系Oppo服务器,估计用于App分析,不建议删除可以安全禁用
+com.oppo.qualityprotect # QualityProtect Oppo的统计分析服务
+com.oplus.crashbox # CrashBox 发送系统错误给Oppo,开机自启
+com.oppo.instant.local.service # DeliverServer 跟踪分析游戏广告
+com.oplus.onetrace # OneTrace 跟踪组件?似乎用于日志捕获
+com.oplus.nas # 网络服务 获取定位信息,读取通话记录
+vendor.qti.data.txpwradmin # TxPwrAdmin 高通的系统检查分析统计服务,会上传数据
+com.qti.qcc # QCC 高通的系统检查分析统计服务,会上传数据
+com.qualcomm.location # EmergencyLocServices 高通的监控软件,会上传数据
+#com.qualcomm.qti.devicestatisticsservice # 设备统计服务 高通的服务,统计系统各项操作包括App的使用情况
 
 
 # === 4. 安全管控与安装限制 ===
@@ -58,16 +68,20 @@ com.coloros.familyguard # 家庭守护 家长控制
 # === 5. AI 功能 ===
 #com.heytap.speechassist # 语音助手 如需语音唤醒保持注释
 #com.oplus.deepthinker # 智慧能力服务 禁用影响一些 AI 场景加速
-#com.oplus.athena # Athena 行为洞察, 秠除会造成通知延迟并降低电池性能,建议保留
+#com.oplus.athena # Athena 行为洞察,删除或禁用会造成通知延迟并降低电池性能,建议保留
 #com.oplus.aiunit # AI服务引擎
 #com.oplus.aimemory # 小布记忆
 #com.oplus.aiwidgets # 智慧空间 内容推送, 禁用后负一屏/桌面不再推 AI 推荐
 #com.oplus.aiwriter # AI写作/生成组件 禁用关闭相关实验功能
-#com.oplus.atlas # Atlas 应用独立音量控制,建议保留
-
+#com.coloros.lockassistant # Assistant 配合语音助手实现屏蔽的锁定和解锁
 
 # === 6. 垃圾系统应用 ===
+#com.oplus.atlas # Atlas 应用独立音量控制,建议保留
+#com.oplus.audio.effectcenter # AudioEffectCenter 音效中心,提供Dolby音效设置
 #com.coloros.filemanager # 文件管理 如果使用第三方App可以安全删除和禁用
+#com.microsoft.appmanager # Link_to_Windows 微软"连接至windows"
+#com.microsoftsdk.crossdeviceservicebroker # Cross_Device_Broker 微软"连接至windows"相关服务
+#com.microsoft.deviceintegrationservice # Device_Integration_Service 微软"连接至windows"相关服务
 #com.heytap.health # OPPO健康
 com.heytap.themestore # 主题商店 非中国区无法使用可以安全删除或禁用
 com.oplus.themestore # 主题基础服务 非中国区无法使用可以安全删除或禁用
@@ -76,6 +90,8 @@ com.coloros.operationManual # 帮助与反馈
 #com.coloros.assistantscreen # 速览/负一屏
 #com.oplus.smartengine # SmartEngine 速览卡片的支持组件
 com.coloros.activation # 电子保卡 激活后判断手机是否在固保期内,开机自启
+#com.oplus.blur # PostEffect 系统模糊特效,删除或禁用后所有原先模糊特效UI都会变为透明效果
+com.google.android.onetimeinitializer # Google_One_Time_Init 安卓系统初始化配置
 com.nearme.gamecenter # 游戏中心
 com.oplus.play # 小游戏
 com.oplus.games # 游戏助手
@@ -89,3 +105,5 @@ com.heytap.music # 音乐
 com.heytap.reader # 阅读
 com.oneplus.member # 我的一加
 com.oppo.store # OPPO商城
+com.qualcomm.atfwd # AT_command 历史遗留的产物,给modem发送AT命令,完全无用
+com.android.rkpdapp # 远程配置器 主要用于开发者远程操作
