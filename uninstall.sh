@@ -1,11 +1,12 @@
 #!/system/bin/sh
 # ColorOS 16 Debloat - Uninstall Script
-# 卸载模块时重新启用之前禁用的应用包
+# 卸载模块时重新启用 packages.txt 里的所有包
 
 MODDIR="${0%/*}"
 PKGLIST="${MODDIR}/webroot/data/packages.txt"
 LOGFILE="/data/local/tmp/coloros16_debloat_uninstall.log"
 TAIL_LINES=2000
+BOM_PREFIX=$(printf '\357\273\277')
 
 if [ -f "$LOGFILE" ] && command -v tail >/dev/null 2>&1; then
     tail -n "$TAIL_LINES" "$LOGFILE" > "${LOGFILE}.tmp" 2>/dev/null && mv "${LOGFILE}.tmp" "$LOGFILE"
@@ -18,32 +19,50 @@ log() {
 }
 
 extract_pkg_from_line() {
-    local text="$1"
+    local text="$1" trimmed pkg
+
     if [ -z "$text" ]; then
         echo ""
         return
     fi
 
-    local trimmed="$text"
-    trimmed=$(printf '%s\n' "$trimmed" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    text=$(printf '%s' "$text" | tr -d '\r')
 
-    if [ "${trimmed#\#}" != "$trimmed" ]; then
-        trimmed=$(printf '%s\n' "${trimmed#\#}" | sed 's/^[[:space:]]*//')
+    if [ "${text#"$BOM_PREFIX"}" != "$text" ]; then
+        text="${text#"$BOM_PREFIX"}"
     fi
 
-    # 移除 com. 前缀限制，并正确处理行内注释
-    # 检查是否包含点号，作为包名的基本特徵
-    case $trimmed in
-        *.*)
-            # 先去掉 # 及其后面的内容，再取第一列
-            printf '%s\n' "$trimmed" | cut -d'#' -f1 | awk '{print $1}'
-            return
-            ;;
-        *)
-            echo ""
-            return
-            ;;
-    esac
+    trimmed=$(printf '%s\n' "$text" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    if [ -z "$trimmed" ]; then
+        echo ""
+        return
+    fi
+
+    while [ "${trimmed#\#}" != "$trimmed" ]; do
+        trimmed="${trimmed#\#}"
+        trimmed=$(printf '%s\n' "$trimmed" | sed 's/^[[:space:]]*//')
+    done
+
+    if [ -z "$trimmed" ]; then
+        echo ""
+        return
+    fi
+
+    pkg="${trimmed%%#*}"
+    pkg=$(printf '%s\n' "$pkg" | sed 's/[[:space:]]*$//')
+    pkg=$(printf '%s\n' "$pkg" | awk '{print $1}')
+
+    if [ -z "$pkg" ]; then
+        echo ""
+        return
+    fi
+
+    if printf '%s\n' "$pkg" | grep -Eq '^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+$'; then
+        printf "%s\n" "$pkg"
+        return
+    fi
+
+    echo ""
 }
 
 log "============================================"
@@ -122,8 +141,13 @@ while IFS= read -r line || [ -n "$line" ]; do
         1) failed=$((failed + 1)) ;;
         2) skipped=$((skipped + 1)) ;;
     esac
-    
+
 done < "$PKGLIST"
+
+if [ -x "$MODDIR/webroot/scripts/restore_all_packages.sh" ]; then
+    log "[INFO] Running restore_all_packages.sh"
+    sh "$MODDIR/webroot/scripts/restore_all_packages.sh" "$PKGLIST"
+fi
 
 # 输出统计信息
 log "============================================"

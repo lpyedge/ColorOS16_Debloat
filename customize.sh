@@ -20,6 +20,7 @@ set_perm "$MODDIR/service.sh" 0 0 0755
 set_perm "$MODDIR/apply_now.sh" 0 0 0755
 set_perm "$MODDIR/uninstall.sh" 0 0 0755
 set_perm "$MODDIR/webroot/scripts/save_packages.sh" 0 0 0755
+set_perm "$MODDIR/webroot/scripts/restore_all_packages.sh" 0 0 0755
 
 # 修复 Windows 换行符 (CRLF -> LF) 并调整权限
 for file in "$MODDIR"/*.sh "$MODDIR"/*.prop "$MODDIR"/webroot/data/*.txt "$MODDIR"/webroot/scripts/*.sh; do

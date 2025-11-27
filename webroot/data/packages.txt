@@ -29,6 +29,11 @@ com.heytap.browser # 浏览器 禁用后桌面搜索卡片与浏览器入口消�
 com.heytap.yoli # 视频
 com.heytap.music # 音乐
 com.heytap.reader # 阅读
+com.oneplus.member # 我的一加
+com.oppo.store # OPPO商城
+com.ted.number # 智能识别陌生号码
+com.oplus.logkit # 反馈工具箱
+com.oplus.dmp # 融合搜索服务
 #com.heytap.health # OPPO健康
 com.heytap.themestore # 主题商店 非中国区无法使用可以安全删除或禁用
 com.oplus.themestore # 主题基础服务 非中国区无法使用可以安全删除或禁用
@@ -42,7 +47,7 @@ com.coloros.operationManual # 帮助与反馈
 # === 3. 行为分析 / 统计 / AI 监控 ===
 com.oplus.statistics.rom # ColorOS 统计与埋点, 禁用阻断大部分系统数据上报
 com.oplus.appsense # AppSense 行为分析, 禁用减少个性化推荐
-com.oplus.deepthinker # 智慧能力服务 禁用影响一些 AI 场景加速
+#com.oplus.deepthinker # 智慧能力服务 禁用影响一些 AI 场景加速
 #com.oplus.athena # Athena 行为洞察, 秠除会造成通知延迟并降低电池性能,建议保留
 com.oplus.obrain # OBrain 云控策略中心, 禁用可杜绝云控推送
 #com.oplus.aiunit # AI服务引擎
@@ -52,7 +57,10 @@ com.oplus.obrain # OBrain 云控策略中心, 禁用可杜绝云控推送
 com.oplus.sense.netscore # 网络体验评分 禁用避免上传网络质量
 #com.oplus.sense.netprediction # 网络预测模块 禁用后智能网络切换可能减弱
 #com.oplus.atlas # Atlas 应用独立音量控制,建议保留
-com.oplus.notificationmanager # 通知管理 全局通知策略服务, 禁用可能影响通知排序/分类
+#com.oplus.notificationmanager # 通知管理 全局通知策略服务, 禁用影响通知权限管理
+com.oplus.olc # 日志服务 
+com.oplus.powermonitor # 耗电监控服务 会上传本机的耗电日志
+com.oplus.locationproxy # 运营商位置信息 基于信号塔的三角定位？和GPS定位无关
 
 
 # === 4. 远程运维 / SAU / OTA 推送 ===
