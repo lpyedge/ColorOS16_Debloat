@@ -104,6 +104,13 @@ com.heytap.yoli # 视频
 com.heytap.music # 音乐
 com.heytap.reader # 阅读
 com.oneplus.member # 我的一加
+com.oneplus.bbs # 一加社区
+com.oplus.tips # 使用技巧
+com.android.email # 邮件
+#com.redteamobile.roaming # 逍遥游
+com.oneplus.brickmode # 禅定空间
+#com.oplus.documentsreader # 文档
+#com.oloros.calculator # 计算器
 com.oppo.store # OPPO商城
 com.qualcomm.atfwd # AT_command 历史遗留的产物,给modem发送AT命令,完全无用
 com.android.rkpdapp # 远程配置器 主要用于开发者远程操作
