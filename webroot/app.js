@@ -312,11 +312,14 @@ function parsePackagesText(text) {
         }
 
         let working = trimmed;
-        let enabled = true;
-        if (working.startsWith("#")) {
-            working = working.slice(1).trim();
-            enabled = false;
+        let commentLevel = 0;
+        while (working.startsWith("#")) {
+            commentLevel += 1;
+            working = working.slice(1);
         }
+        working = working.replace(/^\s+/, "");
+        const ignored = commentLevel >= 2;
+        const enabled = commentLevel === 0;
 
         if (!working || working.startsWith("=") || working.indexOf(".") === -1) {
             currentGroup.preamble.push(original);
@@ -338,7 +341,7 @@ function parsePackagesText(text) {
         }
 
         const { label, description } = splitMeta(metaPart);
-        currentGroup.items.push({ id: pkgPart, label, description, enabled });
+        currentGroup.items.push({ id: pkgPart, label, description, enabled, ignored });
         currentGroup._hasItems = true;
     });
 
@@ -367,7 +370,8 @@ function buildPackagesText(data) {
             const meta = parts.join(" ").trim();
             let line = item.id.trim();
             if (meta) line += ` # ${meta}`;
-            if (!item.enabled) line = `#${line}`;
+            if (item.ignored) line = `##${line}`;
+            else if (!item.enabled) line = `#${line}`;
             pushLine(line);
         });
         if (index !== data.groups.length - 1 && lines[lines.length - 1] !== "") {
@@ -404,6 +408,7 @@ function render() {
         }
 
         group.items.forEach((item) => {
+            if (item.ignored) return;
             const row = document.createElement("div");
             row.className = "package-row";
 
@@ -512,7 +517,7 @@ async function loadPackages() {
     state._snapshot = {};
     (state.groups || []).forEach((g) => {
         (g.items || []).forEach((it) => {
-            if (it && it.id) state._snapshot[it.id] = !!it.enabled;
+            if (it && it.id && !it.ignored) state._snapshot[it.id] = !!it.enabled;
         });
     });
     render();
@@ -542,7 +547,7 @@ async function savePackages(applyImmediately) {
         let newEnable = 0;  // 原本屏蔽，现在取消勾选 -> 新解除屏蔽
         (state.groups || []).forEach((g) => {
             (g.items || []).forEach((it) => {
-                if (!it || !it.id) return;
+                if (!it || !it.id || it.ignored) return;
                 const prev = state._snapshot && Object.prototype.hasOwnProperty.call(state._snapshot, it.id) ? !!state._snapshot[it.id] : null;
                 const curr = !!it.enabled;
                 if (prev === null) return; // 无法判断的（新行）跳过

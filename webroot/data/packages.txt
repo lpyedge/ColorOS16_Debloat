@@ -5,6 +5,8 @@
 com.opos.ads # 智能推荐服务 系统广告核心服务,禁用后绝大多数系统广告位不再加载
 com.android.adservices.api # 广告隐私权 安卓系统广告服务API
 com.google.android.ondevicepersonalization.services # （ODP）裝置端個人化 Google的推薦/廣告或裝置端統計
+com.oplus.pantanal.ums # 服务治理框架 有push服务，怀疑和广告推送有关
+com.google.android.adservices.api # 广告隐私权
 
 # === 2. 厂商账号与云控通道（云控监控） ===
 # 注意: 这组会影响 ColorOS OTA 更新
@@ -18,13 +20,16 @@ com.google.android.projection.gearhead # Android_Auto 安卓系统智驾服务
 com.heytap.usercenter # 会员中心壳体 禁用后会员入口与成长值显示隐藏
 com.heytap.openid # OpenID 快速登录授权, 禁用后第三方使用 HeyTap 登录会失败
 com.oplus.obrain # OBrain 云控策略中心, 禁用可杜绝云控推送
+#com.oneplus.membership # 一加会员
+#com.oneplus.account # 一加账号
 com.oplus.postmanservice # Postman 远程调试/云控下发, 禁用后厂商远程配置无法下发
 com.oppo.ctautoregist # 运营商自动注册, 禁用阻断合作方自动激活
 com.oplus.sau # SAU 系统更新监控, 禁用会导致 OTA 不可用
 com.oplus.sauhelper # SAU 辅助进程, 与 OTA 更新绑定
+com.oplus.cota # 配置更新 和SIM卡运营商的配置更新相关？
 #com.oplus.romupdate # ROM在线升级核心 禁用后系统不会检查新版本
 com.oplus.upgradeguide # 升级助手/升级提示卡 禁用则不再收到升级通知
-
+com.oplus.ota # 软件更新 OTA升级相关
 
 # === 3. 行为统计与隐私数据上传 ===
 com.oplus.statistics.rom # ColorOS 统计与埋点, 禁用阻断大部分系统数据上报
@@ -32,6 +37,7 @@ com.oplus.appsense # AppSense 行为分析, 禁用减少个性化推荐
 com.oplus.sense.netscore # 网络体验评分 禁用避免上传网络质量
 #com.oplus.sense.netprediction # 网络预测模块 禁用后智能网络切换可能减弱
 com.oplus.olc # 日志服务 
+com.oplus.lfeh # OplusLFEHer 日志相关 
 com.oplus.powermonitor # 耗电监控服务 会上传本机的耗电日志
 com.oplus.locationproxy # 运营商位置信息 基于信号塔的三角定位？和GPS定位无关
 com.ted.number # 智能识别陌生号码
@@ -58,6 +64,8 @@ com.coloros.safecenter # 安全中心 主界面与风险扫描, 禁用后无法�
 #com.coloros.securitypermission # 应用权限管理
 com.oplus.guard # 系统守护/恶意软件扫描, 可能参与安装拦截
 com.coloros.securityguard # Guard主进程 负责拦截并上报
+com.oplus.securityguard # 安全事件 
+com.oplus.pay # 安全支付 
 com.coloros.remoteguardservice # Guard的远程策略 家长接口
 com.coloros.familyguard # 家庭守护 家长控制
 #com.oplus.notificationmanager # 通知管理 全局通知策略服务, 禁用影响通知权限管理
@@ -91,6 +99,7 @@ com.coloros.operationManual # 帮助与反馈
 #com.oplus.smartengine # SmartEngine 速览卡片的支持组件
 com.coloros.activation # 电子保卡 激活后判断手机是否在固保期内,开机自启
 #com.oplus.blur # PostEffect 系统模糊特效,删除或禁用后所有原先模糊特效UI都会变为透明效果
+com.oplus.uiengine # 百变引擎 主题美化相关
 com.google.android.onetimeinitializer # Google_One_Time_Init 安卓系统初始化配置
 com.nearme.gamecenter # 游戏中心
 com.oplus.play # 小游戏
@@ -101,16 +110,31 @@ com.heytap.market # 软件商店 禁用会影响官方渠道更新与礼包领�
 com.heytap.pictorial # 乐划锁屏(资讯流) 禁用后锁屏不再轮播推荐内容
 com.heytap.browser # 浏览器 禁用后桌面搜索卡片与浏览器入口消失
 com.heytap.yoli # 视频
+com.coloros.video # 视频
 com.heytap.music # 音乐
 com.heytap.reader # 阅读
+com.oneplus.gallery # 相册
+com.coloros.assistantscreen # Shelf 桌面和通知栏的widgets？Google Play上架App
 com.oneplus.member # 我的一加
 com.oneplus.bbs # 一加社区
+net.oneplus.forums # Community 一加社区
+com.oneplus.mall # OnePlusStore 一加商城
 com.oplus.tips # 使用技巧
 com.android.email # 邮件
 #com.redteamobile.roaming # 逍遥游
 com.oneplus.brickmode # 禅定空间
+com.oppo.quicksearchbox # 全局搜索
 #com.oplus.documentsreader # 文档
-#com.oloros.calculator # 计算器
+#com.coloros.calculator # 计算器
+#com.oneplus.calculator # 计算器
+com.oplus.omoji # Omoji Oppo表情
+com.coloros.ocrscanner # 扫一扫 OCR文档识别，可以用第三方替代
 com.oppo.store # OPPO商城
+#com.android.printspooler # 打印处理服务
+#com.android.bips # 默认打印服务
+#com.coloros.childrenspace # 儿童模式
 com.qualcomm.atfwd # AT_command 历史遗留的产物,给modem发送AT命令,完全无用
 com.android.rkpdapp # 远程配置器 主要用于开发者远程操作
+com.oplus.engineermode # 工程模式 提供一些常规测试工具
+com.oplus.engineercamera # 工程相机 工程模式下相机测试工具
+com.android.devicediagnostics # 设备诊断 谷歌安卓15新增的测试工具

@@ -4,6 +4,7 @@
 
 MODDIR="${0%/*}"
 PKGLIST="${MODDIR}/webroot/data/packages.txt"
+SYSTEM_PKG_LIST="${MODDIR}/webroot/data/system_packages.txt"
 LOGFILE="/data/local/tmp/coloros16_debloat.log"
 MAX_BOOT_WAIT=300
 BOOT_WAIT_INTERVAL=5
@@ -51,6 +52,100 @@ sync_webroot_packages() {
     fi
 }
 
+collect_system_packages() {
+    local target="$1"
+    local tmp="${target}.tmp"
+    mkdir -p "$(dirname "$target")" 2>/dev/null || true
+
+    if command -v pm >/dev/null 2>&1; then
+        pm list packages 2>/dev/null | sed 's/^package://' > "$tmp"
+    elif command -v cmd >/dev/null 2>&1; then
+        cmd package list packages 2>/dev/null | sed 's/^package://' > "$tmp"
+    else
+        return 1
+    fi
+
+    if [ ! -s "$tmp" ]; then
+        rm -f "$tmp"
+        return 1
+    fi
+
+    mv "$tmp" "$target"
+    chmod 0644 "$target" 2>/dev/null
+    return 0
+}
+
+auto_ignore_missing_packages() {
+    local pkglist="$1"
+    local allpkgs="$2"
+    local tmp="${pkglist}.tmp"
+
+    [ -f "$pkglist" ] || return 1
+    [ -f "$allpkgs" ] || return 1
+
+    awk -v list="$allpkgs" '
+        BEGIN {
+            while ((getline line < list) > 0) {
+                sub(/\r$/, "", line)
+                if (line != "") pkgs[line] = 1
+            }
+        }
+        {
+            raw = $0
+            sub(/\r$/, "", raw)
+            line = raw
+            bom = ""
+            if (NR == 1 && substr(line, 1, 3) == "\357\273\277") {
+                bom = "\357\273\277"
+                line = substr(line, 4)
+            }
+
+            match(line, /^[[:space:]]*/)
+            lead = substr(line, RSTART, RLENGTH)
+            rest = substr(line, RLENGTH + 1)
+            trimmed = rest
+            sub(/[[:space:]]+$/, "", trimmed)
+            if (trimmed == "") {
+                print bom line
+                next
+            }
+
+            t = trimmed
+            while (substr(t, 1, 1) == "#") {
+                t = substr(t, 2)
+            }
+            sub(/^[[:space:]]+/, "", t)
+            pkg = t
+            sub(/#.*/, "", pkg)
+            sub(/^[[:space:]]+/, "", pkg)
+            sub(/[[:space:]]+$/, "", pkg)
+            split(pkg, parts, /[[:space:]]+/)
+            pkg = parts[1]
+
+            if (pkg == "" || pkg !~ /^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+$/) {
+                print bom line
+                next
+            }
+
+            if (!(pkg in pkgs)) {
+                if (substr(trimmed, 1, 2) == "##") {
+                    print bom line
+                } else if (substr(rest, 1, 1) == "#") {
+                    print bom lead "#" rest
+                } else {
+                    print bom lead "##" rest
+                }
+                next
+            }
+
+            print bom line
+        }
+    ' "$pkglist" > "$tmp" && mv "$tmp" "$pkglist"
+
+    chmod 0644 "$pkglist" 2>/dev/null
+    return 0
+}
+
 sync_webroot_packages
 
 if [ "$SKIP_BOOT_WAIT" -eq 1 ]; then
@@ -69,6 +164,13 @@ else
 
     sleep 10
     log "[INFO] System boot completed, starting package operations..."
+fi
+
+if collect_system_packages "$SYSTEM_PKG_LIST"; then
+    log "[INFO] System package list captured"
+    auto_ignore_missing_packages "$PKGLIST" "$SYSTEM_PKG_LIST"
+else
+    log "[WARN] Failed to capture system package list; skip missing-package auto-ignore"
 fi
 
 # 关闭 pkg watchdog 以减少回滚
@@ -165,7 +267,7 @@ enabled_ok=0
 skipped_enable=0
 failed_enable=0
 
-# 读取包列表并逐行执行（未注释行=禁用，带 # 行=启用）
+# 读取包列表并逐行执行（未注释行=禁用，单 # 行=启用，双 ## 行=忽略）
 while IFS= read -r line || [ -n "$line" ]; do
     line=$(printf '%s\n' "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     if [ -z "$line" ]; then
