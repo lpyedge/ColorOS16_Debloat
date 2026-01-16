@@ -59,6 +59,7 @@ com.qualcomm.location # EmergencyLocServices 高通的监控软件,会上传数�
 # 注意: 以下包涉及 ColorOS 安全中心与支付校验, 禁用可能绕过"高风险应用"提示, 但也会失去权限/支付防护
 com.nearme.instant.platform # 快应用服务框架 禁用防止安装国产垃圾App
 com.coloros.phonemanager # 手机管家 安装包扫描检查
+com.oplus.phonemanager # 手机管家 安装包扫描检查
 com.oplus.appdetail # 应用安装器 安装扫描风险扫描,会限制第三方App安装
 com.coloros.safecenter # 安全中心 主界面与风险扫描, 禁用后无法打开安全中心
 #com.coloros.securitypermission # 应用权限管理
@@ -86,7 +87,8 @@ com.coloros.familyguard # 家庭守护 家长控制
 # === 6. 垃圾系统应用 ===
 #com.oplus.atlas # Atlas 应用独立音量控制,建议保留
 #com.oplus.audio.effectcenter # AudioEffectCenter 音效中心,提供Dolby音效设置
-#com.coloros.filemanager # 文件管理 如果使用第三方App可以安全删除和禁用
+com.coloros.filemanager # 文件管理 如果使用第三方App可以安全删除和禁用
+com.oneplus.filemanager # 文件管理 如果使用第三方App可以安全删除和禁用
 #com.microsoft.appmanager # Link_to_Windows 微软"连接至windows"
 #com.microsoftsdk.crossdeviceservicebroker # Cross_Device_Broker 微软"连接至windows"相关服务
 #com.microsoft.deviceintegrationservice # Device_Integration_Service 微软"连接至windows"相关服务
@@ -114,14 +116,14 @@ com.coloros.video # 视频
 com.heytap.music # 音乐
 com.heytap.reader # 阅读
 com.oneplus.gallery # 相册
-com.coloros.assistantscreen # Shelf 桌面和通知栏的widgets？Google Play上架App
+#com.coloros.assistantscreen # Shelf 桌面和通知栏的widgets，Google Play上架App
 com.oneplus.member # 我的一加
 com.oneplus.bbs # 一加社区
 net.oneplus.forums # Community 一加社区
 com.oneplus.mall # OnePlusStore 一加商城
 com.oplus.tips # 使用技巧
 com.android.email # 邮件
-#com.redteamobile.roaming # 逍遥游
+com.redteamobile.roaming # 逍遥游
 com.oneplus.brickmode # 禅定空间
 com.oppo.quicksearchbox # 全局搜索
 #com.oplus.documentsreader # 文档
