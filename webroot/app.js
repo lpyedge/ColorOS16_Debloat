@@ -536,6 +536,20 @@ async function savePackages(applyImmediately) {
         return;
     }
 
+    // 禁用按钮并显示加载状态
+    const saveBtn = document.getElementById("save");
+    const saveApplyBtn = document.getElementById("saveApply");
+    const activeBtn = applyImmediately ? saveApplyBtn : saveBtn;
+    
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.classList.add("loading");
+    }
+    if (saveApplyBtn) {
+        saveApplyBtn.disabled = true;
+        saveApplyBtn.classList.add("loading");
+    }
+
     logStep(applyImmediately ? "保存并应用..." : "保存中...");
     try {
         const payload = buildPackagesText(state);
@@ -568,6 +582,17 @@ async function savePackages(applyImmediately) {
                 showToast("保存或应用失败：" + reason);
                 setStatus(`保存或应用失败：${reason}`, "error");
                 logStep("保存或应用失败: " + reason, { statusLevel: "error" });
+                // 提前恢复按钮（因为 return 会跳过 finally）
+                const saveBtn = document.getElementById("save");
+                const saveApplyBtn = document.getElementById("saveApply");
+                if (saveBtn) {
+                    saveBtn.classList.remove("loading");
+                    saveBtn.disabled = false;
+                }
+                if (saveApplyBtn) {
+                    saveApplyBtn.classList.remove("loading");
+                    saveApplyBtn.disabled = false;
+                }
                 return;
             }
 
@@ -598,6 +623,18 @@ async function savePackages(applyImmediately) {
         showToast(`保存失败：${reason}`);
         setStatus(`保存失败：${reason}`, "error");
         logStep("保存失败: " + reason, { statusLevel: "error" });
+    } finally {
+        // 恢复按钮状态
+        const saveBtn = document.getElementById("save");
+        const saveApplyBtn = document.getElementById("saveApply");
+        if (saveBtn) {
+            saveBtn.classList.remove("loading");
+            saveBtn.disabled = false;
+        }
+        if (saveApplyBtn) {
+            saveApplyBtn.classList.remove("loading");
+            saveApplyBtn.disabled = false;
+        }
     }
 }
 
