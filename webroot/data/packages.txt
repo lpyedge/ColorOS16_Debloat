@@ -97,7 +97,7 @@ com.heytap.themestore # 主题商店 非中国区无法使用可以安全删除�
 com.oplus.themestore # 主题基础服务 非中国区无法使用可以安全删除或禁用
 com.heytap.colorfulengine # 多彩引擎 主要用于主题的显示,可以安全删除或禁用
 com.coloros.operationManual # 帮助与反馈
-#com.coloros.assistantscreen # 速览/负一屏
+#com.coloros.assistantscreen # 速览/负一屏/Shelf 桌面和通知栏的widgets，Google Play上架App
 #com.oplus.smartengine # SmartEngine 速览卡片的支持组件
 com.coloros.activation # 电子保卡 激活后判断手机是否在固保期内,开机自启
 #com.oplus.blur # PostEffect 系统模糊特效,删除或禁用后所有原先模糊特效UI都会变为透明效果
@@ -105,7 +105,7 @@ com.oplus.uiengine # 百变引擎 主题美化相关
 com.google.android.onetimeinitializer # Google_One_Time_Init 安卓系统初始化配置
 com.nearme.gamecenter # 游戏中心
 com.oplus.play # 小游戏
-com.oplus.games # 游戏助手
+#com.oplus.games # 游戏助手
 com.heytap.vip # 账号服务 会员福利中心, 禁用仅影响会员卡券
 com.heytap.quicksearchbox # 全局搜索 负一屏搜索框, 禁用后桌面搜索失效
 com.heytap.market # 软件商店 禁用会影响官方渠道更新与礼包领取
@@ -116,7 +116,6 @@ com.coloros.video # 视频
 com.heytap.music # 音乐
 com.heytap.reader # 阅读
 com.oneplus.gallery # 相册
-#com.coloros.assistantscreen # Shelf 桌面和通知栏的widgets，Google Play上架App
 com.oneplus.member # 我的一加
 com.oneplus.bbs # 一加社区
 net.oneplus.forums # Community 一加社区

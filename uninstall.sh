@@ -68,6 +68,8 @@ extract_pkg_from_line() {
 log "============================================"
 log "ColorOS 16 Debloat Uninstall started"
 log "Module Dir: $MODDIR"
+log "Strategy: Re-enable all packages that were disabled by this module"
+log "          (i.e., uncommented lines in packages.txt)"
 log "============================================"
 
 # 检查 Root 权限
@@ -126,7 +128,23 @@ skipped=0
 failed=0
 
 # 读取包列表并逐行处理
+# 只处理未注释的行（这些是被模块禁用的包）
+# 注释行（#开头）表示模块会启用它们，卸载时不需要处理
 while IFS= read -r line || [ -n "$line" ]; do
+    # 移除首尾空白
+    line=$(printf '%s\n' "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    
+    # 跳过空行
+    if [ -z "$line" ]; then
+        continue
+    fi
+    
+    # 跳过注释行（这些包在模块运行时会被启用，不需要卸载时处理）
+    if [ "${line#\#}" != "$line" ]; then
+        continue
+    fi
+    
+    # 提取包名（只处理未注释的行）
     pkg=$(extract_pkg_from_line "$line")
     if [ -z "$pkg" ]; then
         continue

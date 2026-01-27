@@ -3,19 +3,28 @@ name: Publish Release
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Release tag (e.g. v1.2.3)'
+      version:
+        description: 'Version number (e.g. 0.5.0, will auto-prefix with v for tag)'
         required: true
+        type: string
       release_name:
-        description: 'Release title (optional)'
+        description: 'Release title (optional, defaults to version)'
         required: false
+        type: string
       body:
-        description: 'Release notes (optional)'
+        description: 'Release notes (optional, defaults to latest commit)'
         required: false
+        type: string
       prerelease:
-        description: 'Mark as prerelease (true/false)'
+        description: 'Mark as prerelease'
         required: false
-        default: 'false'
+        type: boolean
+        default: false
+      clean_history:
+        description: 'Clean old releases and tags (keep only latest)'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -30,26 +39,58 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
+          fetch-depth: 0  # fetch all history for tag cleanup
+
+      - name: Clean old releases and tags
+        if: ${{ github.event.inputs.clean_history == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "Cleaning old releases and tags..."
+          
+          # Get all releases and delete them
+          gh release list --limit 100 --json tagName --jq '.[].tagName' | while read -r tag; do
+            echo "Deleting release: $tag"
+            gh release delete "$tag" --yes --cleanup-tag || echo "Failed to delete release $tag"
+          done
+          
+          # Get all remaining tags and delete them
+          git tag -l | while read -r tag; do
+            echo "Deleting tag: $tag"
+            git push origin --delete "$tag" || echo "Failed to delete remote tag $tag"
+            git tag -d "$tag" || echo "Failed to delete local tag $tag"
+          done
+          
+          echo "History cleanup completed"
 
       - name: Bump versionCode, update module.prop and latest.json, and push
         id: prepare
         env:
-          TAG: ${{ github.event.inputs.tag }}
+          VERSION_INPUT: ${{ github.event.inputs.version }}
           REPO: ${{ github.repository }}
           BODY: ${{ github.event.inputs.body }}
         run: |
           set -euo pipefail
 
-          if [ -z "${TAG}" ]; then
-            echo "Release tag input (e.g. v0.0.4) is required" >&2
-            exit 1
-          fi
-
-          version=${TAG#v}
+          # Validate and normalize version
+          version="${VERSION_INPUT}"
           if [ -z "$version" ]; then
-            echo "Unable to derive version from tag ${TAG}" >&2
+            echo "Version input is required (e.g. 0.5.0)" >&2
             exit 1
           fi
+          
+          # Remove 'v' prefix if user provided it
+          version="${version#v}"
+          
+          # Validate version format (simple check for x.y.z)
+          if ! echo "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Invalid version format: $version. Expected format: x.y.z (e.g. 0.5.0)" >&2
+            exit 1
+          fi
+          
+          tag="v${version}"
           zip_name="ColorOS16_Debloat-${version}.zip"
 
           # read existing versionCode from module.prop (default 0)
@@ -65,7 +106,9 @@ jobs:
           # increment versionCode
           new_vc=$((existing_vc + 1))
 
-          echo "Bumping versionCode: ${existing_vc} -> ${new_vc}, setting version=${version}"
+          echo "Version: ${version}"
+          echo "Tag: ${tag}"
+          echo "Bumping versionCode: ${existing_vc} -> ${new_vc}"
 
           # update or add version and versionCode in module.prop
           if grep -q "^version=" module.prop; then
@@ -108,18 +151,22 @@ jobs:
             echo "updateJson=${new_update_url}" >> module.prop
           fi
 
-          # Write changelog to webroot/changelog.md using latest commit message
-          git log -1 --pretty=%B > webroot/changelog.md
+          # Write changelog to webroot/changelog.md using latest commit message or user input
+          if [ -n "${BODY}" ]; then
+            echo "${BODY}" > webroot/changelog.md
+          else
+            git log -1 --pretty=%B > webroot/changelog.md
+          fi
 
-          # prepare latest.json
-          zip_url="https://github.com/${REPO}/releases/download/${TAG}/${zip_name}"
+          # prepare latest.json with correct URLs
+          zip_url="https://github.com/${REPO}/releases/download/${tag}/${zip_name}"
           # create JSON via Python to safely handle escaping and changelog
           export version=${version}
           export versionCode=${new_vc}
-          export download_name=${new_download_name}
+          export download_name=${zip_name}
           export zip_url=${zip_url}
           export changelog_url=${changelog_url}
-          python - <<'PY' > webroot/latest.json
+          python3 - <<'PY' > webroot/latest.json
           import os, json
           data = {
             "id": "coloros16_debloat",
@@ -133,23 +180,23 @@ jobs:
             "download_url": os.environ.get('zip_url',''),
             "changelog": os.environ.get('changelog_url','')
           }
-          print(json.dumps(data, ensure_ascii=False))
+          print(json.dumps(data, ensure_ascii=False, indent=2))
           PY
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add module.prop webroot/latest.json webroot/changelog.md customize.sh
-          git commit -m "chore(release): bump versionCode to ${new_vc} for ${version}" || echo "no changes to commit"
+          git commit -m "chore(release): bump to v${version} (versionCode ${new_vc})" || echo "no changes to commit"
           git push origin HEAD:main || echo "push failed"
 
           {
             echo "version=${version}"
             echo "zip_name=${zip_name}"
             echo "version_code=${new_vc}"
-            echo "tag=${TAG}"
+            echo "tag=${tag}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create versioned + latest ZIP packages
+      - name: Create versioned ZIP package
         env:
           VERSION: ${{ steps.prepare.outputs.version }}
           ZIP_NAME: ${{ steps.prepare.outputs.zip_name }}
@@ -163,37 +210,40 @@ jobs:
           fi
           zip_name=${ZIP_NAME:-ColorOS16_Debloat-${version}.zip}
           zip -r "$zip_name" . -x "./.git/*" "./.github/*"
-          # create an unversioned 'latest' zip so update_url can point to a stable filename
-          cp "$zip_name" ColorOS16_Debloat.zip
+          
+          echo "Created package: $zip_name"
+          ls -lh "$zip_name"
 
       - name: Create GitHub Release
         id: create_release
-        uses: actions/create-release@v1
-        with:
-          tag_name: ${{ github.event.inputs.tag }}
-          release_name: ${{ github.event.inputs.release_name || github.event.inputs.tag }}
-          body: ${{ github.event.inputs.body }}
-          draft: false
-          prerelease: ${{ github.event.inputs.prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # - name: Upload latest (unversioned) release asset
-      #   if: always()
-      #   uses: actions/upload-release-asset@v1
-      #   with:
-      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-      #     asset_path: ColorOS16_Debloat.zip
-      #     asset_name: ColorOS16_Debloat.zip
-      #     asset_content_type: application/zip
-
-      - name: Upload versioned release asset
-        if: always()
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.prepare.outputs.zip_name }}
-          asset_name: ${{ steps.prepare.outputs.zip_name }}
-          asset_content_type: application/zip
-
-      # latest.json already updated and pushed before packaging
+          TAG: ${{ steps.prepare.outputs.tag }}
+          RELEASE_NAME: ${{ github.event.inputs.release_name }}
+          BODY: ${{ github.event.inputs.body }}
+          PRERELEASE: ${{ github.event.inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          
+          tag="${TAG}"
+          release_name="${RELEASE_NAME:-${tag}}"
+          body="${BODY}"
+          prerelease_flag=""
+          
+          if [ "${PRERELEASE}" = "true" ]; then
+            prerelease_flag="--prerelease"
+          fi
+          
+          # If no body provided, use changelog
+          if [ -z "$body" ]; then
+            body=$(cat webroot/changelog.md)
+          fi
+          
+          # Create release and get upload URL
+          gh release create "$tag" \
+            --title "$release_name" \
+            --notes "$body" \
+            $prerelease_flag \
+            "${{ steps.prepare.outputs.zip_name }}"
+          
+          echo "Release created: $tag"
