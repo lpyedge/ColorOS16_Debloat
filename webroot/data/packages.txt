@@ -4,9 +4,9 @@
 # === 1. 系统广告与内容推广（广告推送） ===
 com.opos.ads # 智能推荐服务 系统广告核心服务,禁用后绝大多数系统广告位不再加载
 com.android.adservices.api # 广告隐私权 安卓系统广告服务API
+com.google.mainline.adseervices # MainComponents 隐私沙盒广告技术
 com.google.android.ondevicepersonalization.services # （ODP）裝置端個人化 Google的推薦/廣告或裝置端統計
-com.oplus.pantanal.ums # 服务治理框架 有push服务，怀疑和广告推送有关
-com.google.android.adservices.api # 广告隐私权
+com.google.android.adservices.api # 广告隐私权 隐私沙盒广告技术
 
 # === 2. 厂商账号与云控通道（云控监控） ===
 # 注意: 这组会影响 ColorOS OTA 更新
@@ -85,6 +85,7 @@ com.coloros.familyguard # 家庭守护 家长控制
 #com.coloros.lockassistant # Assistant 配合语音助手实现屏蔽的锁定和解锁
 
 # === 6. 垃圾系统应用 ===
+#com.oplus.pantanal.ums # 服务治理框架 流动岛和负一屏组件相关，有push服务
 #com.oplus.atlas # Atlas 应用独立音量控制,建议保留
 #com.oplus.audio.effectcenter # AudioEffectCenter 音效中心,提供Dolby音效设置
 com.coloros.filemanager # 文件管理 如果使用第三方App可以安全删除和禁用
