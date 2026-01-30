@@ -76,7 +76,7 @@ com.coloros.familyguard # 家庭守护 家长控制
 
 # === 5. AI 功能 ===
 #com.heytap.speechassist # 语音助手 如需语音唤醒保持注释
-#com.oplus.deepthinker # 智慧能力服务 禁用影响一些 AI 场景加速
+com.oplus.deepthinker # 智慧能力服务 禁用影响一些AI场景加速（怀疑会造成极暗环境下屏幕自动亮度下黑屏？）
 #com.oplus.athena # Athena 行为洞察,删除或禁用会造成通知延迟并降低电池性能,建议保留
 #com.oplus.aiunit # AI服务引擎
 #com.oplus.aimemory # 小布记忆
@@ -85,7 +85,7 @@ com.coloros.familyguard # 家庭守护 家长控制
 #com.coloros.lockassistant # Assistant 配合语音助手实现屏蔽的锁定和解锁
 
 # === 6. 垃圾系统应用 ===
-#com.oplus.pantanal.ums # 服务治理框架 流动岛和负一屏组件相关，有push服务
+#com.oplus.pantanal.ums # 服务治理框架 灵动岛，锁屏通知，负一屏组件相关，有push服务（建议保留）
 #com.oplus.atlas # Atlas 应用独立音量控制,建议保留
 #com.oplus.audio.effectcenter # AudioEffectCenter 音效中心,提供Dolby音效设置
 com.coloros.filemanager # 文件管理 如果使用第三方App可以安全删除和禁用
