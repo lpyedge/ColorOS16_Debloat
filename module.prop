@@ -1,9 +1,9 @@
 id=coloros16_debloat
 name=ColorOS16/OxygenOS16 Debloat (Ads / Cloud / Stats)
-version=0.4.2
-versionCode=40
+version=0.4.3
+versionCode=41
 author=Lpyedge
 description=Disable ColorOS16/OxygenOS16 HeyTap ads, cloud control and telemetry on OnePlus Ace 6 via pm disable-until-used commands.
 update_url=https://raw.githubusercontent.com/lpyedge/ColorOS16_Debloat/main/webroot/latest.json
 updateJson=https://raw.githubusercontent.com/lpyedge/ColorOS16_Debloat/main/webroot/latest.json
-download_name=ColorOS16_Debloat-0.4.2.zip
+download_name=ColorOS16_Debloat-0.4.3.zip

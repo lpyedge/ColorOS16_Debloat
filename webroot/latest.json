@@ -1,12 +1,12 @@
 {
   "id": "coloros16_debloat",
   "name": "ColorOS 16 Debloat (Ads / Cloud / Stats)",
-  "version": "0.4.2",
-  "versionCode": 40,
-  "download_name": "ColorOS16_Debloat-0.4.2.zip",
-  "zipUrl": "https://github.com/lpyedge/ColorOS16_Debloat/releases/download/v0.4.2/ColorOS16_Debloat-0.4.2.zip",
-  "zip_url": "https://github.com/lpyedge/ColorOS16_Debloat/releases/download/v0.4.2/ColorOS16_Debloat-0.4.2.zip",
-  "downloadUrl": "https://github.com/lpyedge/ColorOS16_Debloat/releases/download/v0.4.2/ColorOS16_Debloat-0.4.2.zip",
-  "download_url": "https://github.com/lpyedge/ColorOS16_Debloat/releases/download/v0.4.2/ColorOS16_Debloat-0.4.2.zip",
+  "version": "0.4.3",
+  "versionCode": 41,
+  "download_name": "ColorOS16_Debloat-0.4.3.zip",
+  "zipUrl": "https://github.com/lpyedge/ColorOS16_Debloat/releases/download/v0.4.3/ColorOS16_Debloat-0.4.3.zip",
+  "zip_url": "https://github.com/lpyedge/ColorOS16_Debloat/releases/download/v0.4.3/ColorOS16_Debloat-0.4.3.zip",
+  "downloadUrl": "https://github.com/lpyedge/ColorOS16_Debloat/releases/download/v0.4.3/ColorOS16_Debloat-0.4.3.zip",
+  "download_url": "https://github.com/lpyedge/ColorOS16_Debloat/releases/download/v0.4.3/ColorOS16_Debloat-0.4.3.zip",
   "changelog": "https://raw.githubusercontent.com/lpyedge/ColorOS16_Debloat/main/webroot/changelog.md"
 }
